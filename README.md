@@ -107,12 +107,17 @@ A powerful Chrome extension that gathers all open YouTube video tabs into a sing
 
 #### In Embedded Player
 - `P` - Toggle playlist panel
-- `Shift + →` - Next video
-- `Shift + ←` - Previous video
-- `Escape` - Close playlist panel
+- `Shift + →` - Next video (navigation arrows)
+- `Shift + ←` - Previous video (navigation arrows)
+- `N` - Next video (letter shortcut)
+- `B` - Previous video (back/letter shortcut)
+- `Escape` - Close playlist panel (when open)
 
 #### In Popup
 - `Enter` - Gather videos
+
+#### Visual Feedback
+All keyboard shortcuts show visual confirmation when activated, displaying the action performed in the top-right corner of the player.
 
 ## 🛠️ Technical Details
 

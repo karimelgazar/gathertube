@@ -596,33 +596,69 @@ class GatherTubePlayer {
     }
     
     handleKeydown(e) {
-        // Don't interfere with player controls
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        // Don't interfere with input fields or contenteditable elements
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.contentEditable === 'true') {
+            return;
+        }
+        
+        // Don't interfere if modifier keys (except Shift for navigation) are pressed
+        const hasModifiers = e.ctrlKey || e.metaKey || e.altKey;
         
         switch (e.key) {
             case 'ArrowRight':
-                if (e.shiftKey) {
+                if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.showShortcutFeedback('Next Video (Shift + →)');
                     this.playNext();
-                    e.preventDefault();
                 }
                 break;
+                
             case 'ArrowLeft':
-                if (e.shiftKey) {
-                    this.playPrevious();
+                if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
                     e.preventDefault();
+                    e.stopPropagation();
+                    this.showShortcutFeedback('Previous Video (Shift + ←)');
+                    this.playPrevious();
                 }
                 break;
+                
             case 'p':
             case 'P':
-                if (!e.ctrlKey && !e.altKey) {
-                    this.togglePlaylistPanel();
+                if (!hasModifiers) {
                     e.preventDefault();
+                    e.stopPropagation();
+                    this.showShortcutFeedback('Toggle Playlist (P)');
+                    this.togglePlaylistPanel();
                 }
                 break;
+                
             case 'Escape':
-                if (this.isPlaylistPanelOpen) {
-                    this.togglePlaylistPanel();
+                if (this.isPlaylistPanelOpen && !hasModifiers) {
                     e.preventDefault();
+                    e.stopPropagation();
+                    this.showShortcutFeedback('Close Playlist (Escape)');
+                    this.togglePlaylistPanel();
+                }
+                break;
+                
+            case 'n':
+            case 'N':
+                if (!hasModifiers) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.showShortcutFeedback('Next Video (N)');
+                    this.playNext();
+                }
+                break;
+                
+            case 'b':
+            case 'B':
+                if (!hasModifiers) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.showShortcutFeedback('Previous Video (B)');
+                    this.playPrevious();
                 }
                 break;
         }
@@ -645,6 +681,44 @@ class GatherTubePlayer {
     
     hideLoading() {
         this.elements.loadingOverlay.style.display = 'none';
+    }
+    
+    showShortcutFeedback(message) {
+        // Create or update keyboard shortcut feedback
+        let feedbackDiv = document.getElementById('shortcut-feedback');
+        if (!feedbackDiv) {
+            feedbackDiv = document.createElement('div');
+            feedbackDiv.id = 'shortcut-feedback';
+            feedbackDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: rgba(255, 0, 0, 0.9);
+                color: white;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 14px;
+                font-weight: 600;
+                z-index: 10000;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+                pointer-events: none;
+            `;
+            document.body.appendChild(feedbackDiv);
+        }
+        
+        feedbackDiv.textContent = message;
+        feedbackDiv.style.opacity = '1';
+        
+        // Clear existing timeout
+        if (this.shortcutFeedbackTimeout) {
+            clearTimeout(this.shortcutFeedbackTimeout);
+        }
+        
+        // Hide after 1 second
+        this.shortcutFeedbackTimeout = setTimeout(() => {
+            feedbackDiv.style.opacity = '0';
+        }, 1000);
     }
     
     showError(message) {
