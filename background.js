@@ -22,24 +22,28 @@ class GatherTubeBackground {
     }
     
     async setDefaultSettings() {
-        const result = await chrome.storage.local.get(['embedMode', 'closeTabs', 'currentWindowOnly']);
-        if (result.embedMode === undefined || result.closeTabs === undefined || result.currentWindowOnly === undefined) {
+        const result = await chrome.storage.local.get(['embedMode', 'closeTabs', 'currentWindowOnly', 'sortOrder']);
+        if (result.embedMode === undefined || result.closeTabs === undefined || result.currentWindowOnly === undefined || result.sortOrder === undefined) {
             await chrome.storage.local.set({
                 embedMode: false,
                 closeTabs: false,
-                currentWindowOnly: false
+                currentWindowOnly: false,
+                sortOrder: 'newest'
             });
         }
     }
     
     async handleGatherRequest(request, sendResponse) {
         try {
-            const { embedMode, closeTabs, currentWindowOnly } = request;
+            const { embedMode, closeTabs, currentWindowOnly, sortOrder } = request;
             
             // Get all YouTube video tabs
             const videoData = await this.getYouTubeVideoTabs(currentWindowOnly);
             
-            if (videoData.length === 0) {
+            // Sort video data according to the selected sort order
+            const sortedVideoData = this.sortVideoData(videoData, sortOrder || 'newest');
+            
+            if (sortedVideoData.length === 0) {
                 sendResponse({
                     success: false,
                     message: 'No YouTube video tabs found.',
@@ -49,9 +53,8 @@ class GatherTubeBackground {
             }
             
             // Extract video IDs and remove duplicates
-            const videoIds = this.extractUniqueVideoIds(videoData);
+            const videoIds = this.extractUniqueVideoIds(sortedVideoData);
             
-            console.log(`Found ${videoIds.length} unique videos from ${videoData.length} tabs`);
             
             // Create queue based on mode
             let queueResult;
@@ -68,7 +71,7 @@ class GatherTubeBackground {
             
             // Close original tabs if requested
             if (closeTabs) {
-                await this.closeOriginalTabs(videoData, queueResult.newTabId);
+                await this.closeOriginalTabs(sortedVideoData, queueResult.newTabId);
             }
             
             sendResponse({
@@ -79,7 +82,6 @@ class GatherTubeBackground {
             });
             
         } catch (error) {
-            console.error('Error in handleGatherRequest:', error);
             sendResponse({
                 success: false,
                 message: 'Failed to gather videos: ' + error.message,
@@ -91,7 +93,6 @@ class GatherTubeBackground {
     async getYouTubeVideoTabs(currentWindowOnly = false) {
         const queryOptions = currentWindowOnly ? { currentWindow: true } : {};
         const tabs = await chrome.tabs.query(queryOptions);
-        console.log(`Checking ${tabs.length} ${currentWindowOnly ? 'current window' : 'total'} tabs for YouTube videos...`);
         
         const youtubeTabs = tabs.filter(tab => {
             if (!tab.url && !tab.title) return false;
@@ -123,17 +124,17 @@ class GatherTubeBackground {
             // Additional check: extract video ID if possible
             const videoId = this.extractVideoId(urlToCheck) || this.extractVideoIdFromTitle(titleToCheck);
             if (videoId) {
-                console.log(`Found YouTube tab: ${titleToCheck} (${urlToCheck}) -> ID: ${videoId}`);
             }
             return videoId !== null;
             
         }).map(tab => ({
             id: tab.id,
             url: tab.url,
-            title: tab.title || 'YouTube Video'
+            title: tab.title || 'YouTube Video',
+            index: tab.index, // Tab position for left-right/right-left sorting
+            lastAccessed: tab.lastAccessed || Date.now() // For newest/oldest sorting
         }));
         
-        console.log(`Found ${youtubeTabs.length} YouTube video tabs`);
         return youtubeTabs;
     }
     
@@ -151,7 +152,6 @@ class GatherTubeBackground {
             
             if (videoId) {
                 videoIds.add(videoId);
-                console.log(`Found video ID: ${videoId} from tab: ${video.title}`);
             }
         });
         
@@ -216,18 +216,89 @@ class GatherTubeBackground {
         return id && id.length === 11 && /^[a-zA-Z0-9_-]+$/.test(id);
     }
     
+    sortVideoData(videoData, sortOrder) {
+        // Create a copy to avoid mutating the original array
+        const sortedData = [...videoData];
+        
+        switch (sortOrder) {
+            case 'newest':
+                return sortedData.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
+                
+            case 'oldest':
+                return sortedData.sort((a, b) => (a.lastAccessed || 0) - (b.lastAccessed || 0));
+                
+            case 'english':
+                return sortedData.sort((a, b) => {
+                    const aIsEnglish = this.isLikelyEnglish(a.title);
+                    const bIsEnglish = this.isLikelyEnglish(b.title);
+                    if (aIsEnglish && !bIsEnglish) return -1;
+                    if (!aIsEnglish && bIsEnglish) return 1;
+                    return 0; // Keep original order for same language type
+                });
+                
+            case 'non-english':
+                return sortedData.sort((a, b) => {
+                    const aIsEnglish = this.isLikelyEnglish(a.title);
+                    const bIsEnglish = this.isLikelyEnglish(b.title);
+                    if (!aIsEnglish && bIsEnglish) return -1;
+                    if (aIsEnglish && !bIsEnglish) return 1;
+                    return 0; // Keep original order for same language type
+                });
+                
+            case 'left-right':
+                return sortedData.sort((a, b) => (a.index || 0) - (b.index || 0));
+                
+            case 'right-left':
+                return sortedData.sort((a, b) => (b.index || 0) - (a.index || 0));
+                
+            default:
+                return sortedData; // Return unsorted if unknown sort order
+        }
+    }
+    
+    isLikelyEnglish(text) {
+        if (!text) return false;
+        
+        // Simple heuristic to detect English text
+        // Check for common English words and patterns
+        const commonEnglishWords = [
+            'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
+            'by', 'from', 'up', 'about', 'into', 'through', 'during', 'before', 'after',
+            'above', 'below', 'between', 'among', 'is', 'are', 'was', 'were', 'be', 'been',
+            'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should',
+            'may', 'might', 'must', 'can', 'shall', 'this', 'that', 'these', 'those'
+        ];
+        
+        const lowerText = text.toLowerCase();
+        
+        // Count English words
+        let englishWordCount = 0;
+        for (const word of commonEnglishWords) {
+            if (lowerText.includes(word)) {
+                englishWordCount++;
+            }
+        }
+        
+        // Check for Latin alphabet dominance
+        const latinChars = text.match(/[a-zA-Z]/g) || [];
+        const totalChars = text.replace(/\s/g, '').length;
+        const latinRatio = latinChars.length / Math.max(totalChars, 1);
+        
+        // Consider it English if:
+        // 1. Has at least 2 common English words, OR
+        // 2. Latin characters make up more than 70% of non-space characters
+        return englishWordCount >= 2 || latinRatio > 0.7;
+    }
+    
     async createWatchVideosQueue(videoIds) {
         try {
             // Use the correct format for YouTube playlist
             const videoIdsParam = videoIds.join(',');
             const queueUrl = `https://www.youtube.com/watch_videos?video_ids=${videoIdsParam}`;
             
-            console.log('Creating watch_videos queue with URL:', queueUrl);
-            console.log('Video IDs:', videoIds);
             
             // Check URL length limit
             if (queueUrl.length > this.MAX_URL_LENGTH) {
-                console.log('URL too long, falling back to embedded mode');
                 return await this.createEmbeddedQueue(videoIds);
             }
             
@@ -242,7 +313,6 @@ class GatherTubeBackground {
                 newTabId: tab.id
             };
         } catch (error) {
-            console.error('Error creating watch_videos queue:', error);
             return {
                 success: false,
                 message: 'Failed to create watch_videos queue: ' + error.message
@@ -289,7 +359,6 @@ class GatherTubeBackground {
                 newTabId: tab.id
             };
         } catch (error) {
-            console.error('Error creating embedded queue:', error);
             return {
                 success: false,
                 message: 'Failed to create embedded queue: ' + error.message
@@ -305,10 +374,9 @@ class GatherTubeBackground {
             
             if (tabsToClose.length > 0) {
                 await chrome.tabs.remove(tabsToClose);
-                console.log(`Closed ${tabsToClose.length} original video tabs`);
             }
         } catch (error) {
-            console.error('Error closing original tabs:', error);
+            // Silently handle tab closing errors
             // Don't fail the entire operation if closing tabs fails
         }
     }
@@ -319,10 +387,8 @@ const gatherTube = new GatherTubeBackground();
 
 // Keep service worker alive
 chrome.runtime.onStartup.addListener(() => {
-    console.log('GatherTube background script started');
 });
 
 // Handle context invalidation
 self.addEventListener('activate', event => {
-    console.log('GatherTube service worker activated');
 });

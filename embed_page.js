@@ -20,15 +20,10 @@ class GatherTubePlayer {
         this.showLoading();
         
         // Initialize iframe-based player (no external API needed)
-        console.log('Initializing iframe-based YouTube player...');
         this.loadYouTubeAPI();
     }
     
     loadYouTubeAPI() {
-        // Skip external API loading - use iframe approach instead
-        console.log('Using iframe-based YouTube player (no external API required)');
-        
-        // Initialize player directly without YouTube API
         setTimeout(() => {
             this.initIframePlayer();
         }, 100);
@@ -90,16 +85,11 @@ class GatherTubePlayer {
         const urlParams = new URLSearchParams(window.location.search);
         const idsParam = urlParams.get('ids');
         
-        console.log('URL params:', urlParams.toString());
-        console.log('IDs param:', idsParam);
-        
         if (idsParam) {
             this.videoIds = idsParam.split(',').filter(id => id.trim().length === 11);
         } else {
             this.loadStoredQueue();
         }
-        
-        console.log('Parsed video IDs:', this.videoIds);
         
         if (this.videoIds.length === 0) {
             this.showError('No video IDs found. Please use the extension to gather videos first.');
@@ -116,7 +106,7 @@ class GatherTubePlayer {
                 this.videoIds = result.currentQueue;
             }
         } catch (error) {
-            console.error('Failed to load stored queue:', error);
+            // Silently handle storage errors
         }
     }
     
@@ -127,7 +117,7 @@ class GatherTubePlayer {
                 queueTimestamp: Date.now()
             });
         } catch (error) {
-            console.error('Failed to save queue:', error);
+            // Silently handle storage errors
         }
     }
     
@@ -137,7 +127,6 @@ class GatherTubePlayer {
             return;
         }
         
-        console.log('Initializing iframe-based player with video IDs:', this.videoIds);
         
         try {
             // Create YouTube iframe directly
@@ -147,8 +136,16 @@ class GatherTubePlayer {
                 return;
             }
             
-            // Build single video URL for iframe (no playlist - we'll handle switching manually)
-            const iframeSrc = `https://www.youtube.com/embed/${this.videoIds[0]}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0`;
+            // Build single video URL for iframe with JS API enabled for event detection
+            // Use YouTube-nocookie domain and strong parameters to disable endscreen:
+            // rel=0: no related videos at end
+            // showinfo=0: no video info overlay  
+            // iv_load_policy=3: disable annotations/info cards
+            // end: set end time to video duration to prevent endscreen
+            // t: start time parameter
+            // modestbranding=1: remove YouTube logo
+            // fs=0: disable fullscreen to prevent endscreen
+            const iframeSrc = `https://www.youtube-nocookie.com/embed/${this.videoIds[0]}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&fs=0&disablekb=1&origin=${window.location.origin}`;
             
             // Create and configure iframe
             const iframe = document.createElement('iframe');
@@ -163,8 +160,70 @@ class GatherTubePlayer {
             
             // Add load event listener
             iframe.addEventListener('load', () => {
-                console.log('Iframe loaded for video:', this.videoIds[this.currentVideoIndex]);
+                // Iframe loaded successfully
             });
+            
+            // Listen for YouTube iframe messages for auto-next functionality
+            this.messageListener = (event) => {
+                // Accept messages from various YouTube origins
+                const isYouTubeOrigin = event.origin === 'https://www.youtube.com' || 
+                                       event.origin === 'https://youtube.com' ||
+                                       event.origin.endsWith('.youtube.com') ||
+                                       event.origin === 'https://www.youtube-nocookie.com';
+                                       
+                if (isYouTubeOrigin) {
+                    try {
+                        let data = event.data;
+                        
+                        // Handle different data formats
+                        if (typeof data === 'string') {
+                            // Try to parse JSON string
+                            try {
+                                data = JSON.parse(data);
+                            } catch {
+                                // If not JSON, check if it contains video state info
+                                if (data.includes('"event":"video-state-change"') && data.includes('"info":0')) {
+                                    this.handleVideoEnd();
+                                    return;
+                                } else if (data.includes('"playerState":0') || data.includes('"state":0')) {
+                                    this.handleVideoEnd();
+                                    return;
+                                } else if (data.includes('onStateChange') && data.includes('0')) {
+                                    this.handleVideoEnd();
+                                    return;
+                                }
+                                return;
+                            }
+                        }
+                        
+                        // Handle parsed data object
+                        if (data && typeof data === 'object') {
+                            
+                            // Check various YouTube message formats for video end (state 0)
+                            if ((data.event === 'video-state-change' || data.event === 'onStateChange') && (data.info === 0 || data.data === 0)) {
+                                this.handleVideoEnd();
+                            } else if (data.info === 0 || data.data === 0) {
+                                this.handleVideoEnd();
+                            } else if (data.playerState === 0 || data.state === 0) {
+                                this.handleVideoEnd();
+                            } else if (data.info && data.info.playerState === 0) {
+                                this.handleVideoEnd();
+                            } else if (data.args && (data.args.state === 0 || data.args.playerState === 0)) {
+                                this.handleVideoEnd();
+                            } else if (data.event === 'video-ended') {
+                                this.handleVideoEnd();
+                            }
+                        }
+                    } catch (e) {
+                        // Silently ignore message processing errors
+                    }
+                }
+            };
+            
+            window.addEventListener('message', this.messageListener);
+            
+            // Add fallback polling mechanism for video end detection
+            this.startVideoEndPolling();
             
             // Clear container and add iframe
             playerContainer.innerHTML = '';
@@ -178,10 +237,8 @@ class GatherTubePlayer {
             this.renderPlaylist();
             this.elements.openInYoutube.style.display = 'block';
             
-            console.log('Iframe player created successfully with first video:', this.videoIds[0]);
             
         } catch (error) {
-            console.error('Failed to initialize iframe player:', error);
             this.showError('Failed to initialize video player: ' + error.message);
         }
     }
@@ -204,13 +261,74 @@ class GatherTubePlayer {
         this.updatePlaylistCurrentItem();
         document.title = `${title} - GatherTube Player`;
         
-        console.log('Updated video info:', title, 'ID:', videoId);
+    }
+    
+    handleVideoEnd() {
+        // Prevent multiple triggers in short succession
+        if (this.lastVideoEndTime && Date.now() - this.lastVideoEndTime < 3000) {
+            return;
+        }
+        
+        this.lastVideoEndTime = Date.now();
+        
+        setTimeout(() => {
+            if (this.currentVideoIndex < this.videoIds.length - 1) {
+                this.playNext();
+            } else {
+            }
+        }, 1500); // Slightly longer delay for smooth transition
+    }
+    
+    startVideoEndPolling() {
+        // Clear any existing polling
+        if (this.videoPolling) {
+            clearInterval(this.videoPolling);
+        }
+        
+        
+        // Poll every 10 seconds to check for video end as backup
+        this.videoPolling = setInterval(() => {
+            try {
+                const iframe = document.getElementById('youtube-iframe');
+                if (iframe) {
+                    // Try to detect if video has ended by sending various messages to iframe
+                    iframe.contentWindow.postMessage('{"event":"listening"}', 'https://www.youtube.com');
+                    iframe.contentWindow.postMessage('{"event":"listening"}', 'https://www.youtube-nocookie.com');
+                    
+                    // Also try getting player state
+                    iframe.contentWindow.postMessage('{"event":"command","func":"getPlayerState"}', 'https://www.youtube.com');
+                    iframe.contentWindow.postMessage('{"event":"command","func":"getPlayerState"}', 'https://www.youtube-nocookie.com');
+                }
+            } catch (e) {
+                // Silently ignore polling errors
+            }
+        }, 10000);
+        
+        // Stop polling after a reasonable time (30 minutes per video max)
+        setTimeout(() => {
+            if (this.videoPolling) {
+                clearInterval(this.videoPolling);
+            }
+        }, 30 * 60 * 1000);
+    }
+    
+    cleanup() {
+        // Clean up event listeners and polling
+        if (this.messageListener) {
+            window.removeEventListener('message', this.messageListener);
+        }
+        if (this.videoPolling) {
+            clearInterval(this.videoPolling);
+            this.videoPolling = null;
+        }
     }
     
     // Using updateCurrentVideoSimple() instead for iframe player
     
     playVideo(index) {
-        if (index < 0 || index >= this.videoIds.length || !this.isPlayerReady) return;
+        if (index < 0 || index >= this.videoIds.length || !this.isPlayerReady) {
+            return;
+        }
         
         this.currentVideoIndex = index;
         const videoId = this.videoIds[index];
@@ -221,16 +339,19 @@ class GatherTubePlayer {
             const iframe = playerContainer.querySelector('iframe');
             
             if (iframe) {
-                // Switch to single video URL
-                const newSrc = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0`;
+                // Switch to single video URL with JS API enabled and suggestions disabled
+                const newSrc = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&fs=0&disablekb=1&origin=${window.location.origin}`;
                 
                 iframe.src = newSrc;
-                console.log('Switched to video:', videoId, 'at index:', index);
+                
+                // Restart polling for the new video
+                this.startVideoEndPolling();
+            } else {
             }
             
             this.updateCurrentVideoSimple();
         } catch (error) {
-            console.error('Failed to load video:', error);
+            // Silently handle video loading errors
         }
     }
     
@@ -280,29 +401,24 @@ class GatherTubePlayer {
                  onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCA0OCAzNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDgiIGhlaWdodD0iMzYiIGZpbGw9IiMzMzMiLz48cGF0aCBkPSJNMjAgMTJMMjggMTguNUwyMCAyNVYxMloiIGZpbGw9IiM2NjYiLz48L3N2Zz4='">
             <div class="item-info">
                 <div class="item-title" title="Video ${index + 1}">Loading...</div>
-                <div class="item-duration">--:--</div>
+                <div class="item-duration">Video</div>
             </div>
             <div class="item-actions">
-                <button class="play-now-btn" title="Play Now">▶</button>
-                <button class="delete-btn" title="Remove">🗑️</button>
+                <button class="delete-btn" title="Remove">
+                    <svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" height="24" viewBox="0 0 24 24" width="24" focusable="false" aria-hidden="true" style="pointer-events: none; display: inherit; width: 100%; height: 100%;"><path d="M11 17H9V8h2v9zm4-9h-2v9h2V8zm4-4v1h-1v16H6V5H5V4h4V3h6v1h4zm-2 1H7v15h10V5z"></path></svg>
+                </button>
             </div>
         `;
         
         // Bind events
         item.addEventListener('click', (e) => {
             if (!e.target.closest('.item-actions')) {
-                console.log('Clicked playlist item at index:', index, 'videoId:', videoId);
                 this.playVideo(index);
                 // Close playlist panel on mobile after selection
                 if (window.innerWidth <= 768) {
                     this.togglePlaylistPanel();
                 }
             }
-        });
-        
-        item.querySelector('.play-now-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.playVideo(index);
         });
         
         item.querySelector('.delete-btn').addEventListener('click', (e) => {
@@ -324,25 +440,25 @@ class GatherTubePlayer {
     
     async loadVideoInfo(videoId, titleElement, durationElement) {
         try {
-            // Try to get title from YouTube API (basic method using oEmbed)
+            // Get title from YouTube's oembed API
             const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
             if (response.ok) {
                 const data = await response.json();
                 titleElement.textContent = data.title;
                 titleElement.title = data.title;
+            } else {
+                // Fallback title
+                const index = titleElement.closest('.playlist-item').dataset.index;
+                titleElement.textContent = `Video ${index ? parseInt(index) + 1 : ''}`;
             }
             
-            // Try to get duration from YouTube thumbnail API (limited info)
-            // Note: This is a basic approach - full duration would require YouTube Data API
-            const thumbnailResponse = await fetch(`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`);
-            if (thumbnailResponse.ok) {
-                // For now, show that we have video info
-                durationElement.textContent = '📹';
-            }
+            // Show simple duration placeholder
+            durationElement.textContent = 'Video';
+            
         } catch (error) {
-            // Fallback to generic info
-            console.warn('Failed to load video info:', error);
-            durationElement.textContent = '--:--';
+            const index = titleElement.closest('.playlist-item').dataset.index;
+            titleElement.textContent = `Video ${index ? parseInt(index) + 1 : ''}`;
+            durationElement.textContent = 'Video';
         }
     }
     
@@ -578,5 +694,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Global function for YouTube API
 window.onYouTubeIframeAPIReady = function() {
-    console.log('YouTube IFrame API ready');
+    // YouTube IFrame API ready callback
 };

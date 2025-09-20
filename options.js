@@ -18,6 +18,7 @@ class GatherTubeOptions {
             defaultEmbedMode: document.getElementById('defaultEmbedMode'),
             defaultCloseTabs: document.getElementById('defaultCloseTabs'),
             defaultCurrentWindowOnly: document.getElementById('defaultCurrentWindowOnly'),
+            defaultSortOrder: document.getElementById('defaultSortOrder'),
             defaultModeText: document.getElementById('defaultModeText'),
             resetSettings: document.getElementById('resetSettings'),
             messageDiv: document.getElementById('message'),
@@ -42,6 +43,10 @@ class GatherTubeOptions {
         });
         
         this.elements.defaultCurrentWindowOnly.addEventListener('change', () => {
+            this.saveSettings();
+        });
+        
+        this.elements.defaultSortOrder.addEventListener('change', () => {
             this.saveSettings();
         });
         
@@ -72,15 +77,16 @@ class GatherTubeOptions {
             const result = await chrome.storage.local.get({
                 embedMode: false,
                 closeTabs: false,
-                currentWindowOnly: false
+                currentWindowOnly: false,
+                sortOrder: 'newest'
             });
             
             this.elements.defaultEmbedMode.checked = result.embedMode;
             this.elements.defaultCloseTabs.checked = result.closeTabs;
             this.elements.defaultCurrentWindowOnly.checked = result.currentWindowOnly;
+            this.elements.defaultSortOrder.value = result.sortOrder;
             this.updateModeText();
         } catch (error) {
-            console.error('Failed to load settings:', error);
             this.showMessage('Failed to load settings', 'error');
         }
     }
@@ -90,12 +96,12 @@ class GatherTubeOptions {
             await chrome.storage.local.set({
                 embedMode: this.elements.defaultEmbedMode.checked,
                 closeTabs: this.elements.defaultCloseTabs.checked,
-                currentWindowOnly: this.elements.defaultCurrentWindowOnly.checked
+                currentWindowOnly: this.elements.defaultCurrentWindowOnly.checked,
+                sortOrder: this.elements.defaultSortOrder.value
             });
             
             this.showMessage('Settings saved successfully', 'success');
         } catch (error) {
-            console.error('Failed to save settings:', error);
             this.showMessage('Failed to save settings', 'error');
         }
     }
@@ -127,7 +133,6 @@ class GatherTubeOptions {
                 this.elements.lastUpdate.textContent = 'Never';
             }
         } catch (error) {
-            console.error('Failed to load extension info:', error);
         }
     }
     
@@ -163,6 +168,7 @@ class GatherTubeOptions {
             this.elements.defaultEmbedMode.checked = false;
             this.elements.defaultCloseTabs.checked = false;
             this.elements.defaultCurrentWindowOnly.checked = false;
+            this.elements.defaultSortOrder.value = 'newest';
             this.updateModeText();
             
             // Reload extension info
@@ -170,7 +176,6 @@ class GatherTubeOptions {
             
             this.showMessage('All settings have been reset to default values', 'success');
         } catch (error) {
-            console.error('Failed to reset settings:', error);
             this.showMessage('Failed to reset settings', 'error');
         }
     }

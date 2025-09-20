@@ -5,6 +5,7 @@ class GatherTubePopup {
         this.embedModeCheckbox = document.getElementById('embedMode');
         this.closeTabsCheckbox = document.getElementById('closeTabs');
         this.currentWindowOnlyCheckbox = document.getElementById('currentWindowOnly');
+        this.sortOrderSelect = document.getElementById('sortOrder');
         this.modeText = document.getElementById('modeText');
         this.gatherBtn = document.getElementById('gatherBtn');
         this.loader = document.getElementById('loader');
@@ -24,14 +25,15 @@ class GatherTubePopup {
             const result = await chrome.storage.local.get({
                 embedMode: false,
                 closeTabs: false,
-                currentWindowOnly: false
+                currentWindowOnly: false,
+                sortOrder: 'newest'
             });
             
             this.embedModeCheckbox.checked = result.embedMode;
             this.closeTabsCheckbox.checked = result.closeTabs;
             this.currentWindowOnlyCheckbox.checked = result.currentWindowOnly;
+            this.sortOrderSelect.value = result.sortOrder;
         } catch (error) {
-            console.error('Failed to load settings:', error);
             this.showMessage('Failed to load settings', 'error');
         }
     }
@@ -41,10 +43,10 @@ class GatherTubePopup {
             await chrome.storage.local.set({
                 embedMode: this.embedModeCheckbox.checked,
                 closeTabs: this.closeTabsCheckbox.checked,
-                currentWindowOnly: this.currentWindowOnlyCheckbox.checked
+                currentWindowOnly: this.currentWindowOnlyCheckbox.checked,
+                sortOrder: this.sortOrderSelect.value
             });
         } catch (error) {
-            console.error('Failed to save settings:', error);
             this.showMessage('Failed to save settings', 'error');
         }
     }
@@ -61,6 +63,10 @@ class GatherTubePopup {
         });
         
         this.currentWindowOnlyCheckbox.addEventListener('change', () => {
+            this.saveSettings();
+        });
+        
+        this.sortOrderSelect.addEventListener('change', () => {
             this.saveSettings();
         });
         
@@ -93,7 +99,8 @@ class GatherTubePopup {
                 action: 'gather',
                 embedMode: this.embedModeCheckbox.checked,
                 closeTabs: this.closeTabsCheckbox.checked,
-                currentWindowOnly: this.currentWindowOnlyCheckbox.checked
+                currentWindowOnly: this.currentWindowOnlyCheckbox.checked,
+                sortOrder: this.sortOrderSelect.value
             });
             
             if (response.success) {
@@ -107,7 +114,6 @@ class GatherTubePopup {
                 this.showMessage(response.message || 'Failed to gather videos', 'error');
             }
         } catch (error) {
-            console.error('Failed to gather videos:', error);
             this.showMessage('Failed to communicate with extension', 'error');
         } finally {
             this.setLoading(false);
@@ -154,6 +160,5 @@ document.addEventListener('DOMContentLoaded', () => {
 chrome.runtime?.onMessage?.addListener((request, sender, sendResponse) => {
     if (request.action === 'popup-update') {
         // Handle any updates from background script
-        console.log('Popup update received:', request);
     }
 });
