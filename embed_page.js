@@ -19,25 +19,19 @@ class GatherTubePlayer {
         this.parseVideoIds();
         this.showLoading();
         
-        // Initialize YouTube player when API is ready
-        if (window.YT && window.YT.Player) {
-            console.log('YouTube API already loaded, initializing player...');
-            this.initPlayer();
-        } else {
-            console.log('Waiting for YouTube API to load...');
-            window.onYouTubeIframeAPIReady = () => {
-                console.log('YouTube API ready, initializing player...');
-                this.initPlayer();
-            };
-            
-            // Fallback: try to initialize after a delay
-            setTimeout(() => {
-                if (!this.isPlayerReady && window.YT && window.YT.Player) {
-                    console.log('Fallback: initializing player after timeout...');
-                    this.initPlayer();
-                }
-            }, 3000);
-        }
+        // Initialize iframe-based player (no external API needed)
+        console.log('Initializing iframe-based YouTube player...');
+        this.loadYouTubeAPI();
+    }
+    
+    loadYouTubeAPI() {
+        // Skip external API loading - use iframe approach instead
+        console.log('Using iframe-based YouTube player (no external API required)');
+        
+        // Initialize player directly without YouTube API
+        setTimeout(() => {
+            this.initIframePlayer();
+        }, 100);
     }
     
     initElements() {
@@ -90,11 +84,16 @@ class GatherTubePlayer {
         const urlParams = new URLSearchParams(window.location.search);
         const idsParam = urlParams.get('ids');
         
+        console.log('URL params:', urlParams.toString());
+        console.log('IDs param:', idsParam);
+        
         if (idsParam) {
             this.videoIds = idsParam.split(',').filter(id => id.trim().length === 11);
         } else {
             this.loadStoredQueue();
         }
+        
+        console.log('Parsed video IDs:', this.videoIds);
         
         if (this.videoIds.length === 0) {
             this.showError('No video IDs found. Please use the extension to gather videos first.');
@@ -126,111 +125,74 @@ class GatherTubePlayer {
         }
     }
     
-    initPlayer() {
+    initIframePlayer() {
         if (this.videoIds.length === 0) {
             this.showError('No video IDs found to play.');
             return;
         }
         
-        console.log('Initializing YouTube player with video IDs:', this.videoIds);
+        console.log('Initializing iframe-based player with video IDs:', this.videoIds);
         
         try {
-            // Check if YouTube API is properly loaded
-            if (!window.YT || !window.YT.Player) {
-                console.error('YouTube API not loaded');
-                this.showError('YouTube API failed to load. Please refresh the page.');
+            // Create YouTube iframe directly
+            const playerContainer = document.getElementById('player');
+            if (!playerContainer) {
+                this.showError('Player container not found.');
                 return;
             }
             
-            this.player = new YT.Player('player', {
-                height: '100%',
-                width: '100%',
-                videoId: this.videoIds[0],
-                playerVars: {
-                    autoplay: 1,
-                    controls: 1,
-                    showinfo: 0,
-                    rel: 0,
-                    iv_load_policy: 3,
-                    modestbranding: 1,
-                    playsinline: 1
-                },
-                events: {
-                    onReady: (event) => this.onPlayerReady(event),
-                    onStateChange: (event) => this.onPlayerStateChange(event),
-                    onError: (event) => this.onPlayerError(event)
-                }
-            });
+            // Build playlist URL for iframe
+            const playlistParam = this.videoIds.slice(1).join(','); // Skip first video since it's in the embed URL
+            const iframeSrc = `https://www.youtube.com/embed/${this.videoIds[0]}?playlist=${playlistParam}&autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0`;
             
-            console.log('YouTube player created successfully');
+            // Create and configure iframe
+            const iframe = document.createElement('iframe');
+            iframe.src = iframeSrc;
+            iframe.width = '100%';
+            iframe.height = '100%';
+            iframe.frameBorder = '0';
+            iframe.allow = 'autoplay; encrypted-media';
+            iframe.allowFullscreen = true;
+            iframe.style.borderRadius = '12px';
+            
+            // Clear container and add iframe
+            playerContainer.innerHTML = '';
+            playerContainer.appendChild(iframe);
+            
+            // Simulate player ready
+            this.isPlayerReady = true;
+            this.hideLoading();
+            this.hideError();
+            this.updateCurrentVideoSimple();
+            this.renderPlaylist();
+            this.elements.openInYoutube.style.display = 'block';
+            
+            console.log('Iframe player created successfully with playlist:', playlistParam);
+            
         } catch (error) {
-            console.error('Failed to initialize player:', error);
+            console.error('Failed to initialize iframe player:', error);
             this.showError('Failed to initialize video player: ' + error.message);
         }
     }
     
-    onPlayerReady(event) {
-        this.isPlayerReady = true;
-        this.hideLoading();
-        this.updateCurrentVideo();
-        this.renderPlaylist();
-        this.elements.openInYoutube.style.display = 'block';
-        console.log('Player ready with', this.videoIds.length, 'videos');
+    // Old YouTube API methods removed - using iframe approach now
+    
+    updateCurrentVideoSimple() {
+        // Simple video info update for iframe player (limited functionality)
+        const videoId = this.videoIds[this.currentVideoIndex];
+        const title = `Video ${this.currentVideoIndex + 1} of ${this.videoIds.length}`;
+        
+        this.elements.currentVideoTitle.textContent = title;
+        this.elements.currentVideoIndex.textContent = this.currentVideoIndex + 1;
+        this.elements.totalVideos.textContent = this.videoIds.length;
+        
+        this.updatePlaylistCurrentItem();
+        document.title = `${title} - GatherTube Player`;
+        
+        console.log('Updated video info:', title, 'ID:', videoId);
     }
     
-    onPlayerStateChange(event) {
-        if (event.data === YT.PlayerState.ENDED) {
-            this.playNext();
-        } else if (event.data === YT.PlayerState.PLAYING) {
-            this.updateCurrentVideo();
-        }
-    }
-    
-    onPlayerError(event) {
-        console.error('Player error:', event.data);
-        let errorMessage = 'Failed to load video.';
-        
-        switch (event.data) {
-            case 2:
-                errorMessage = 'Invalid video ID.';
-                break;
-            case 5:
-                errorMessage = 'Video cannot be played in HTML5 player.';
-                break;
-            case 100:
-                errorMessage = 'Video not found or private.';
-                break;
-            case 101:
-            case 150:
-                errorMessage = 'Video cannot be embedded.';
-                break;
-        }
-        
-        // Try to skip to next video
-        if (this.videoIds.length > 1) {
-            setTimeout(() => this.playNext(), 2000);
-        } else {
-            this.showError(errorMessage);
-        }
-    }
-    
-    updateCurrentVideo() {
-        if (!this.player || !this.isPlayerReady) return;
-        
-        try {
-            const videoData = this.player.getVideoData();
-            const title = videoData.title || `Video ${this.currentVideoIndex + 1}`;
-            
-            this.elements.currentVideoTitle.textContent = title;
-            this.elements.currentVideoIndex.textContent = this.currentVideoIndex + 1;
-            this.elements.totalVideos.textContent = this.videoIds.length;
-            
-            this.updatePlaylistCurrentItem();
-            document.title = `${title} - GatherTube Player`;
-        } catch (error) {
-            console.error('Failed to update current video:', error);
-        }
-    }
+    // Using updateCurrentVideoSimple() instead for iframe player
     
     playVideo(index) {
         if (index < 0 || index >= this.videoIds.length || !this.isPlayerReady) return;
@@ -239,10 +201,26 @@ class GatherTubePlayer {
         const videoId = this.videoIds[index];
         
         try {
-            this.player.loadVideoById(videoId);
+            // For iframe player, we need to recreate the iframe with the new video
+            const playerContainer = document.getElementById('player');
+            const iframe = playerContainer.querySelector('iframe');
+            
+            if (iframe) {
+                // Update iframe src to play selected video
+                const remainingVideos = [...this.videoIds];
+                remainingVideos.splice(index, 1); // Remove selected video
+                remainingVideos.unshift(this.videoIds[index]); // Add selected video to front
+                
+                const playlistParam = remainingVideos.slice(1).join(',');
+                const newSrc = `https://www.youtube.com/embed/${videoId}?playlist=${playlistParam}&autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0`;
+                
+                iframe.src = newSrc;
+                console.log('Switched to video:', videoId, 'at index:', index);
+            }
+            
+            this.updateCurrentVideoSimple();
         } catch (error) {
             console.error('Failed to load video:', error);
-            this.playNext();
         }
     }
     
@@ -533,6 +511,26 @@ class GatherTubePlayer {
         this.elements.errorText.textContent = message;
         this.elements.errorMessage.style.display = 'block';
         this.hideLoading();
+        
+        // Add specific guidance for YouTube API issues
+        if (message.includes('YouTube API') || message.includes('security restrictions')) {
+            const errorContent = this.elements.errorMessage.querySelector('.error-content');
+            if (errorContent && !errorContent.querySelector('.api-help')) {
+                const helpDiv = document.createElement('div');
+                helpDiv.className = 'api-help';
+                helpDiv.style.marginTop = '12px';
+                helpDiv.style.fontSize = '12px';
+                helpDiv.innerHTML = `
+                    <p><strong>Troubleshooting:</strong></p>
+                    <ul style="text-align: left; padding-left: 20px;">
+                        <li>Disable ad blockers for this page</li>
+                        <li>Check if YouTube is accessible</li>
+                        <li>Try the default 'watch_videos' mode instead</li>
+                    </ul>
+                `;
+                errorContent.appendChild(helpDiv);
+            }
+        }
     }
     
     hideError() {
