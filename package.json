@@ -1,0 +1,35 @@
+{
+  "name": "gathertube",
+  "version": "1.0.0",
+  "description": "A Chrome extension that gathers all open YouTube video tabs into a single queue for seamless watching",
+  "main": "background.js",
+  "scripts": {
+    "build": "echo 'No build process needed - this is a Chrome extension'",
+    "test": "echo 'Manual testing required in Chrome browser'",
+    "package": "zip -r gathertube-v1.0.0.zip . -x '*.git*' 'node_modules/*' '*.DS_Store' 'package.json' 'package-lock.json'"
+  },
+  "keywords": [
+    "chrome-extension",
+    "youtube",
+    "video-queue",
+    "playlist",
+    "tabs",
+    "browser-extension"
+  ],
+  "author": "Your Name <your.email@example.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/gathertube.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/gathertube/issues"
+  },
+  "homepage": "https://github.com/your-username/gathertube#readme",
+  "chrome": {
+    "manifest_version": 3,
+    "minimum_chrome_version": "88"
+  },
+  "devDependencies": {},
+  "dependencies": {}
+}

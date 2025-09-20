@@ -1,0 +1,328 @@
+// Background Service Worker for GatherTube extension
+
+class GatherTubeBackground {
+    constructor() {
+        this.MAX_URL_LENGTH = 8000; // Safe limit for watch_videos URL
+        this.initializeListeners();
+    }
+    
+    initializeListeners() {
+        // Handle messages from popup
+        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+            if (request.action === 'gather') {
+                this.handleGatherRequest(request, sendResponse);
+                return true; // Keep message channel open for async response
+            }
+        });
+        
+        // Handle extension installation
+        chrome.runtime.onInstalled.addListener(() => {
+            this.setDefaultSettings();
+        });
+    }
+    
+    async setDefaultSettings() {
+        const result = await chrome.storage.local.get(['embedMode', 'closeTabs', 'currentWindowOnly']);
+        if (result.embedMode === undefined || result.closeTabs === undefined || result.currentWindowOnly === undefined) {
+            await chrome.storage.local.set({
+                embedMode: false,
+                closeTabs: false,
+                currentWindowOnly: false
+            });
+        }
+    }
+    
+    async handleGatherRequest(request, sendResponse) {
+        try {
+            const { embedMode, closeTabs, currentWindowOnly } = request;
+            
+            // Get all YouTube video tabs
+            const videoData = await this.getYouTubeVideoTabs(currentWindowOnly);
+            
+            if (videoData.length === 0) {
+                sendResponse({
+                    success: false,
+                    message: 'No YouTube video tabs found.',
+                    videoCount: 0
+                });
+                return;
+            }
+            
+            // Extract video IDs and remove duplicates
+            const videoIds = this.extractUniqueVideoIds(videoData);
+            
+            console.log(`Found ${videoIds.length} unique videos from ${videoData.length} tabs`);
+            
+            // Create queue based on mode
+            let queueResult;
+            if (embedMode) {
+                queueResult = await this.createEmbeddedQueue(videoIds);
+            } else {
+                queueResult = await this.createWatchVideosQueue(videoIds);
+            }
+            
+            if (!queueResult.success) {
+                sendResponse(queueResult);
+                return;
+            }
+            
+            // Close original tabs if requested
+            if (closeTabs) {
+                await this.closeOriginalTabs(videoData, queueResult.newTabId);
+            }
+            
+            sendResponse({
+                success: true,
+                message: `Successfully gathered ${videoIds.length} video(s)!`,
+                videoCount: videoIds.length,
+                queueUrl: queueResult.url
+            });
+            
+        } catch (error) {
+            console.error('Error in handleGatherRequest:', error);
+            sendResponse({
+                success: false,
+                message: 'Failed to gather videos: ' + error.message,
+                videoCount: 0
+            });
+        }
+    }
+    
+    async getYouTubeVideoTabs(currentWindowOnly = false) {
+        const queryOptions = currentWindowOnly ? { currentWindow: true } : {};
+        const tabs = await chrome.tabs.query(queryOptions);
+        console.log(`Checking ${tabs.length} ${currentWindowOnly ? 'current window' : 'total'} tabs for YouTube videos...`);
+        
+        const youtubeTabs = tabs.filter(tab => {
+            if (!tab.url && !tab.title) return false;
+            
+            // Check URL for YouTube patterns (including suspended/modified URLs)
+            const urlToCheck = tab.url || '';
+            const titleToCheck = tab.title || '';
+            
+            // Multiple patterns to catch YouTube videos
+            const patterns = [
+                // Standard YouTube URLs
+                /youtube\.com\/watch/i,
+                /youtube\.com\/live/i,
+                /youtu\.be\//i,
+                // Suspended tab patterns (memory extensions)
+                /suspended.*youtube/i,
+                /youtube.*suspended/i,
+                // Check title for YouTube indicators
+                /youtube/i
+            ];
+            
+            // Check if URL or title matches any pattern
+            const matchesPattern = patterns.some(pattern => 
+                pattern.test(urlToCheck) || pattern.test(titleToCheck)
+            );
+            
+            if (!matchesPattern) return false;
+            
+            // Additional check: extract video ID if possible
+            const videoId = this.extractVideoId(urlToCheck) || this.extractVideoIdFromTitle(titleToCheck);
+            if (videoId) {
+                console.log(`Found YouTube tab: ${titleToCheck} (${urlToCheck}) -> ID: ${videoId}`);
+            }
+            return videoId !== null;
+            
+        }).map(tab => ({
+            id: tab.id,
+            url: tab.url,
+            title: tab.title || 'YouTube Video'
+        }));
+        
+        console.log(`Found ${youtubeTabs.length} YouTube video tabs`);
+        return youtubeTabs;
+    }
+    
+    extractUniqueVideoIds(videoData) {
+        const videoIds = new Set();
+        
+        videoData.forEach(video => {
+            // Try to extract from URL first
+            let videoId = this.extractVideoId(video.url);
+            
+            // If not found in URL, try title
+            if (!videoId) {
+                videoId = this.extractVideoIdFromTitle(video.title);
+            }
+            
+            if (videoId) {
+                videoIds.add(videoId);
+                console.log(`Found video ID: ${videoId} from tab: ${video.title}`);
+            }
+        });
+        
+        return Array.from(videoIds);
+    }
+    
+    extractVideoId(url) {
+        if (!url) return null;
+        
+        // Multiple patterns to extract video IDs
+        const patterns = [
+            // Standard youtube.com/watch?v=ID
+            /[&?]v=([a-zA-Z0-9_-]{11})/,
+            // youtu.be/ID
+            /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+            // youtube.com/live/ID
+            /youtube\.com\/live\/([a-zA-Z0-9_-]{11})/,
+            // Any 11-character YouTube video ID pattern
+            /(?:youtube\.com|youtu\.be).*[=/]([a-zA-Z0-9_-]{11})/,
+            // Extract from suspended URLs or other formats
+            /[=/]([a-zA-Z0-9_-]{11})(?:[&?#]|$)/
+        ];
+        
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match && this.isValidVideoId(match[1])) {
+                return match[1];
+            }
+        }
+        
+        return null;
+    }
+    
+    extractVideoIdFromTitle(title) {
+        if (!title) return null;
+        
+        // Try to extract video ID from tab title
+        // Sometimes titles contain the video ID or URL
+        const patterns = [
+            // Video ID in parentheses or brackets
+            /\(([a-zA-Z0-9_-]{11})\)/,
+            /\[([a-zA-Z0-9_-]{11})\]/,
+            // Video ID after dash or pipe
+            / - ([a-zA-Z0-9_-]{11})/,
+            / \| ([a-zA-Z0-9_-]{11})/,
+            // Any 11-character sequence that looks like video ID
+            /([a-zA-Z0-9_-]{11})/
+        ];
+        
+        for (const pattern of patterns) {
+            const match = title.match(pattern);
+            if (match && this.isValidVideoId(match[1])) {
+                return match[1];
+            }
+        }
+        
+        return null;
+    }
+    
+    isValidVideoId(id) {
+        // Basic validation for YouTube video ID
+        return id && id.length === 11 && /^[a-zA-Z0-9_-]+$/.test(id);
+    }
+    
+    async createWatchVideosQueue(videoIds) {
+        try {
+            // Use the correct format for YouTube playlist
+            const videoIdsParam = videoIds.join(',');
+            const queueUrl = `https://www.youtube.com/watch_videos?video_ids=${videoIdsParam}`;
+            
+            console.log('Creating watch_videos queue with URL:', queueUrl);
+            console.log('Video IDs:', videoIds);
+            
+            // Check URL length limit
+            if (queueUrl.length > this.MAX_URL_LENGTH) {
+                console.log('URL too long, falling back to embedded mode');
+                return await this.createEmbeddedQueue(videoIds);
+            }
+            
+            const tab = await chrome.tabs.create({
+                url: queueUrl,
+                active: true
+            });
+            
+            return {
+                success: true,
+                url: queueUrl,
+                newTabId: tab.id
+            };
+        } catch (error) {
+            console.error('Error creating watch_videos queue:', error);
+            return {
+                success: false,
+                message: 'Failed to create watch_videos queue: ' + error.message
+            };
+        }
+    }
+    
+    async createEmbeddedQueue(videoIds) {
+        try {
+            // Create URL with video IDs as parameters
+            const embedUrl = chrome.runtime.getURL('embed_page.html') + 
+                '?ids=' + encodeURIComponent(videoIds.join(','));
+            
+            // Check if we already have an embed page open
+            const existingTabs = await chrome.tabs.query({
+                url: chrome.runtime.getURL('embed_page.html') + '*'
+            });
+            
+            let tab;
+            if (existingTabs.length > 0) {
+                // Update existing embed page
+                tab = existingTabs[0];
+                await chrome.tabs.update(tab.id, {
+                    url: embedUrl,
+                    active: true
+                });
+            } else {
+                // Create new embed page
+                tab = await chrome.tabs.create({
+                    url: embedUrl,
+                    active: true
+                });
+            }
+            
+            // Store video IDs for the embed page
+            await chrome.storage.local.set({
+                currentQueue: videoIds,
+                queueTimestamp: Date.now()
+            });
+            
+            return {
+                success: true,
+                url: embedUrl,
+                newTabId: tab.id
+            };
+        } catch (error) {
+            console.error('Error creating embedded queue:', error);
+            return {
+                success: false,
+                message: 'Failed to create embedded queue: ' + error.message
+            };
+        }
+    }
+    
+    async closeOriginalTabs(videoData, excludeTabId) {
+        try {
+            const tabsToClose = videoData
+                .map(video => video.id)
+                .filter(tabId => tabId !== excludeTabId && tabId !== undefined);
+            
+            if (tabsToClose.length > 0) {
+                await chrome.tabs.remove(tabsToClose);
+                console.log(`Closed ${tabsToClose.length} original video tabs`);
+            }
+        } catch (error) {
+            console.error('Error closing original tabs:', error);
+            // Don't fail the entire operation if closing tabs fails
+        }
+    }
+}
+
+// Initialize background service worker
+const gatherTube = new GatherTubeBackground();
+
+// Keep service worker alive
+chrome.runtime.onStartup.addListener(() => {
+    console.log('GatherTube background script started');
+});
+
+// Handle context invalidation
+self.addEventListener('activate', event => {
+    console.log('GatherTube service worker activated');
+});
