@@ -292,20 +292,63 @@ class GatherTubeBackground {
     
     async createWatchVideosQueue(videoIds) {
         try {
-            // Use the correct format for YouTube playlist
+            // Get current window to ensure proper context
+            const currentWindow = await chrome.windows.getCurrent();
+            const windowId = currentWindow.id;
+            
+            // Use the correct format for YouTube playlist - try multiple approaches
             const videoIdsParam = videoIds.join(',');
-            const queueUrl = `https://www.youtube.com/watch_videos?video_ids=${videoIdsParam}`;
+            let queueUrl;
             
-            
-            // Check URL length limit
-            if (queueUrl.length > this.MAX_URL_LENGTH) {
+            // Try different URL formats based on video count and context
+            if (videoIds.length === 1) {
+                // Single video - use regular watch URL
+                queueUrl = `https://www.youtube.com/watch?v=${videoIds[0]}`;
+            } else if (videoIds.length <= 50) {
+                // Multiple videos - use watch_videos format
+                queueUrl = `https://www.youtube.com/watch_videos?video_ids=${videoIdsParam}`;
+            } else {
+                // Too many videos - fall back to embedded mode
+                console.log(`Too many videos (${videoIds.length}) for YouTube Native mode. Falling back to embedded mode.`);
                 return await this.createEmbeddedQueue(videoIds);
             }
+            
+            // Check URL length limit - be more conservative for watch_videos
+            if (queueUrl.length > this.MAX_URL_LENGTH || videoIds.length > 50) {
+                console.log(`YouTube Native mode: URL too long (${queueUrl.length} chars) or too many videos (${videoIds.length}). Falling back to embedded mode.`);
+                return await this.createEmbeddedQueue(videoIds);
+            }
+            
+            console.log(`Creating YouTube Native queue with ${videoIds.length} videos in window ${windowId}`);
+            console.log(`Queue URL length: ${queueUrl.length} characters`);
+            console.log(`Watch videos URL: ${queueUrl}`);
+            
+            // Store video IDs for potential debugging and window-specific tracking
+            await chrome.storage.local.set({
+                [`nativeQueue_${windowId}`]: videoIds,
+                [`nativeQueueTimestamp_${windowId}`]: Date.now(),
+                [`lastNativeUrl_${windowId}`]: queueUrl
+            });
             
             const tab = await chrome.tabs.create({
                 url: queueUrl,
                 active: true
             });
+            
+            // Set a timeout to check if the YouTube page properly loaded the queue
+            setTimeout(async () => {
+                try {
+                    const updatedTab = await chrome.tabs.get(tab.id);
+                    console.log(`YouTube Native tab after 3 seconds: ${updatedTab.url}`);
+                    
+                    // If YouTube redirected to a single video instead of playlist, that might indicate an issue
+                    if (updatedTab.url && updatedTab.url.includes('/watch?v=') && !updatedTab.url.includes('list=')) {
+                        console.warn(`YouTube Native mode may have failed - redirected to single video: ${updatedTab.url}`);
+                    }
+                } catch (error) {
+                    // Tab might have been closed or moved, ignore
+                }
+            }, 3000);
             
             return {
                 success: true,
@@ -313,6 +356,7 @@ class GatherTubeBackground {
                 newTabId: tab.id
             };
         } catch (error) {
+            console.error('Failed to create watch_videos queue:', error);
             return {
                 success: false,
                 message: 'Failed to create watch_videos queue: ' + error.message
@@ -322,9 +366,14 @@ class GatherTubeBackground {
     
     async createEmbeddedQueue(videoIds) {
         try {
-            // Create URL with video IDs as parameters
+            // Get current window to ensure proper context
+            const currentWindow = await chrome.windows.getCurrent();
+            const windowId = currentWindow.id;
+            
+            // Create URL with video IDs and windowId as parameters
             const embedUrl = chrome.runtime.getURL('embed_page.html') + 
-                '?ids=' + encodeURIComponent(videoIds.join(','));
+                '?ids=' + encodeURIComponent(videoIds.join(',')) + 
+                '&windowId=' + windowId;
             
             // Check if we already have an embed page open in the CURRENT WINDOW only
             const existingTabs = await chrome.tabs.query({
@@ -349,7 +398,6 @@ class GatherTubeBackground {
             }
             
             // Store video IDs for the embed page with window-specific key
-            const windowId = tab.windowId;
             await chrome.storage.local.set({
                 [`currentQueue_${windowId}`]: videoIds,
                 [`queueTimestamp_${windowId}`]: Date.now(),
