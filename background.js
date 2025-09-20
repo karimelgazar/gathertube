@@ -326,29 +326,34 @@ class GatherTubeBackground {
             const embedUrl = chrome.runtime.getURL('embed_page.html') + 
                 '?ids=' + encodeURIComponent(videoIds.join(','));
             
-            // Check if we already have an embed page open
+            // Check if we already have an embed page open in the CURRENT WINDOW only
             const existingTabs = await chrome.tabs.query({
-                url: chrome.runtime.getURL('embed_page.html') + '*'
+                url: chrome.runtime.getURL('embed_page.html') + '*',
+                currentWindow: true  // This ensures isolation between browser windows
             });
             
             let tab;
             if (existingTabs.length > 0) {
-                // Update existing embed page
+                // Update existing embed page in current window
                 tab = existingTabs[0];
                 await chrome.tabs.update(tab.id, {
                     url: embedUrl,
                     active: true
                 });
             } else {
-                // Create new embed page
+                // Create new embed page in current window
                 tab = await chrome.tabs.create({
                     url: embedUrl,
                     active: true
                 });
             }
             
-            // Store video IDs for the embed page
+            // Store video IDs for the embed page with window-specific key
+            const windowId = tab.windowId;
             await chrome.storage.local.set({
+                [`currentQueue_${windowId}`]: videoIds,
+                [`queueTimestamp_${windowId}`]: Date.now(),
+                // Keep the old keys for backward compatibility, but use window-specific for new sessions
                 currentQueue: videoIds,
                 queueTimestamp: Date.now()
             });

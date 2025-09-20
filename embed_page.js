@@ -8,6 +8,7 @@ class GatherTubePlayer {
         this.isPlayerReady = false;
         this.isPlaylistPanelOpen = false;
         this.draggedItem = null;
+        this.windowId = null; // Store window ID for per-window isolation
         
         this.elements = {};
         this.init();
@@ -84,6 +85,10 @@ class GatherTubePlayer {
     parseVideoIds() {
         const urlParams = new URLSearchParams(window.location.search);
         const idsParam = urlParams.get('ids');
+        const windowIdParam = urlParams.get('windowId');
+        
+        // Store windowId for per-window isolation
+        this.windowId = windowIdParam || 'global';
         
         if (idsParam) {
             this.videoIds = idsParam.split(',').filter(id => id.trim().length === 11);
@@ -101,9 +106,12 @@ class GatherTubePlayer {
     
     async loadStoredQueue() {
         try {
-            const result = await chrome.storage.local.get(['currentQueue']);
-            if (result.currentQueue && Array.isArray(result.currentQueue)) {
-                this.videoIds = result.currentQueue;
+            // Use window-specific storage key for per-window isolation
+            const storageKey = this.windowId ? `currentQueue_${this.windowId}` : 'currentQueue';
+            const result = await chrome.storage.local.get([storageKey]);
+            
+            if (result[storageKey] && Array.isArray(result[storageKey])) {
+                this.videoIds = result[storageKey];
             }
         } catch (error) {
             // Silently handle storage errors
@@ -112,10 +120,16 @@ class GatherTubePlayer {
     
     async saveQueue() {
         try {
-            await chrome.storage.local.set({
-                currentQueue: this.videoIds,
-                queueTimestamp: Date.now()
-            });
+            // Use window-specific storage key for per-window isolation
+            const storageKey = this.windowId ? `currentQueue_${this.windowId}` : 'currentQueue';
+            const timestampKey = this.windowId ? `queueTimestamp_${this.windowId}` : 'queueTimestamp';
+            
+            const storageData = {
+                [storageKey]: this.videoIds,
+                [timestampKey]: Date.now()
+            };
+            
+            await chrome.storage.local.set(storageData);
         } catch (error) {
             // Silently handle storage errors
         }
