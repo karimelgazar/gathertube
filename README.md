@@ -77,7 +77,7 @@ A powerful Chrome extension that gathers all open YouTube video tabs into a sing
 
 ### Queue Modes
 
-#### 1. watch_videos Mode (Default)
+#### 1. YouTube Native Mode (Default)
 - Uses YouTube's native `watch_videos` URL format
 - Creates a temporary playlist on YouTube
 - Pros: Native YouTube experience, no custom player needed
@@ -92,7 +92,7 @@ A powerful Chrome extension that gathers all open YouTube video tabs into a sing
 ### Settings & Configuration
 
 #### Popup Settings
-- **Queue behavior**: Toggle between watch_videos and embedded player
+- **Queue behavior**: Toggle between YouTube Native and Embedded Player modes
 - **Close original tabs**: Automatically close gathered tabs
 - **Video order**: Choose from 6 sorting options for organizing your queue
 
@@ -197,7 +197,7 @@ gathertube/
 - Check browser console for JavaScript errors
 
 #### URL Too Long Error
-- Occurs with many videos in watch_videos mode
+- Occurs with many videos in YouTube Native mode
 - Extension automatically falls back to embedded mode
 - Consider using embedded mode for large queues
 

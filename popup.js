@@ -77,7 +77,7 @@ class GatherTubePopup {
     }
     
     updateModeText() {
-        this.modeText.textContent = this.embedModeCheckbox.checked ? 'Embedded player' : 'watch_videos';
+        this.modeText.textContent = this.embedModeCheckbox.checked ? 'Embedded Player' : 'YouTube Native';
     }
     
     async gatherVideos() {

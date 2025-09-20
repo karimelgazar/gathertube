@@ -100,7 +100,7 @@ class GatherTubeOptions {
     
     updateModeText() {
         this.elements.defaultModeText.textContent = 
-            this.elements.defaultEmbedMode.checked ? 'Embedded player' : 'watch_videos';
+            this.elements.defaultEmbedMode.checked ? 'Embedded Player' : 'YouTube Native';
     }
     
     async loadExtensionInfo() {

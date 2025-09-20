@@ -7,33 +7,82 @@
     <link rel="stylesheet" href="popup.css">
     <style>
         body {
-            width: 600px;
+            width: 100vw;
             max-width: none;
-            min-height: auto;
-            padding: 40px;
+            min-height: 100vh;
+            padding: 40px 20px;
             background: #1a1a1a;
             color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
         }
         .container {
-            max-width: 520px;
+            width: 100%;
+            max-width: 900px;
             margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-gap: 32px;
+            align-items: start;
         }
+        
         .header {
-            text-align: left;
+            grid-column: 1 / -1;
+            text-align: center;
             margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid #444;
+        }
+        
+        .section {
+            grid-column: span 1;
+        }
+        
+        .section.full-width {
+            grid-column: 1 / -1;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                max-width: 600px;
+            }
+            
+            .section {
+                grid-column: span 1;
+            }
         }
         .section {
-            margin-bottom: 32px;
-            padding: 24px;
+            margin-bottom: 0;
+            padding: 28px;
             background: #2d2d2d;
             border-radius: 12px;
             border: 1px solid #444;
+            height: fit-content;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
         }
         .section-title {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 600;
-            margin-bottom: 16px;
-            color: #e0e0e0;
+            margin-bottom: 18px;
+            color: #FF0000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: #FF0000;
+            border-radius: 2px;
         }
         .section-description {
             font-size: 14px;
@@ -80,6 +129,7 @@
             margin-top: 32px;
             padding-top: 24px;
             border-top: 1px solid #444;
+            grid-column: 1 / -1;
         }
         .footer-links a {
             color: #FF0000;
@@ -126,7 +176,7 @@
                             <input type="checkbox" id="defaultEmbedMode" class="toggle-input">
                             <span class="toggle-slider"></span>
                         </div>
-                        <span class="toggle-option" id="defaultModeText">watch_videos</span>
+                        <span class="toggle-option" id="defaultModeText">YouTube Native</span>
                     </label>
                 </div>
                 
@@ -157,7 +207,7 @@
             </div>
         </div>
         
-        <div class="section">
+        <div class="section full-width">
             <h2 class="section-title">Keyboard Shortcuts</h2>
             <p class="section-description">
                 Use these keyboard shortcuts in the embedded player for quick navigation.
@@ -211,7 +261,7 @@
             <button id="resetSettings" class="reset-btn">Reset All Settings</button>
         </div>
         
-        <div class="footer-links">
+        <div class="footer-links full-width">
             <a href="#" id="reportIssue">Report Issue</a>
             <a href="#" id="rateExtension">Rate Extension</a>
             <a href="#" id="viewSource">View Source</a>
