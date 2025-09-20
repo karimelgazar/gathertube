@@ -51,7 +51,9 @@ class GatherTubePlayer {
             loadingOverlay: document.getElementById('loadingOverlay'),
             clearQueue: document.getElementById('clearQueue'),
             shuffleQueue: document.getElementById('shuffleQueue'),
-            openInYoutube: document.getElementById('openInYoutube')
+            openInYoutube: document.getElementById('openInYoutube'),
+            prevVideo: document.getElementById('prevVideo'),
+            nextVideo: document.getElementById('nextVideo')
         };
     }
     
@@ -67,6 +69,10 @@ class GatherTubePlayer {
         
         // Open in YouTube
         this.elements.openInYoutube.addEventListener('click', () => this.openInYouTube());
+        
+        // Navigation buttons
+        this.elements.prevVideo.addEventListener('click', () => this.playPrevious());
+        this.elements.nextVideo.addEventListener('click', () => this.playNext());
         
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => this.handleKeydown(e));
@@ -141,9 +147,8 @@ class GatherTubePlayer {
                 return;
             }
             
-            // Build playlist URL for iframe
-            const playlistParam = this.videoIds.slice(1).join(','); // Skip first video since it's in the embed URL
-            const iframeSrc = `https://www.youtube.com/embed/${this.videoIds[0]}?playlist=${playlistParam}&autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0`;
+            // Build single video URL for iframe (no playlist - we'll handle switching manually)
+            const iframeSrc = `https://www.youtube.com/embed/${this.videoIds[0]}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0`;
             
             // Create and configure iframe
             const iframe = document.createElement('iframe');
@@ -154,6 +159,12 @@ class GatherTubePlayer {
             iframe.allow = 'autoplay; encrypted-media';
             iframe.allowFullscreen = true;
             iframe.style.borderRadius = '12px';
+            iframe.id = 'youtube-iframe';
+            
+            // Add load event listener
+            iframe.addEventListener('load', () => {
+                console.log('Iframe loaded for video:', this.videoIds[this.currentVideoIndex]);
+            });
             
             // Clear container and add iframe
             playerContainer.innerHTML = '';
@@ -167,7 +178,7 @@ class GatherTubePlayer {
             this.renderPlaylist();
             this.elements.openInYoutube.style.display = 'block';
             
-            console.log('Iframe player created successfully with playlist:', playlistParam);
+            console.log('Iframe player created successfully with first video:', this.videoIds[0]);
             
         } catch (error) {
             console.error('Failed to initialize iframe player:', error);
@@ -185,6 +196,10 @@ class GatherTubePlayer {
         this.elements.currentVideoTitle.textContent = title;
         this.elements.currentVideoIndex.textContent = this.currentVideoIndex + 1;
         this.elements.totalVideos.textContent = this.videoIds.length;
+        
+        // Update navigation button states
+        this.elements.prevVideo.disabled = this.currentVideoIndex === 0;
+        this.elements.nextVideo.disabled = this.currentVideoIndex === this.videoIds.length - 1;
         
         this.updatePlaylistCurrentItem();
         document.title = `${title} - GatherTube Player`;
@@ -206,13 +221,8 @@ class GatherTubePlayer {
             const iframe = playerContainer.querySelector('iframe');
             
             if (iframe) {
-                // Update iframe src to play selected video
-                const remainingVideos = [...this.videoIds];
-                remainingVideos.splice(index, 1); // Remove selected video
-                remainingVideos.unshift(this.videoIds[index]); // Add selected video to front
-                
-                const playlistParam = remainingVideos.slice(1).join(',');
-                const newSrc = `https://www.youtube.com/embed/${videoId}?playlist=${playlistParam}&autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0`;
+                // Switch to single video URL
+                const newSrc = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0`;
                 
                 iframe.src = newSrc;
                 console.log('Switched to video:', videoId, 'at index:', index);
@@ -281,7 +291,12 @@ class GatherTubePlayer {
         // Bind events
         item.addEventListener('click', (e) => {
             if (!e.target.closest('.item-actions')) {
+                console.log('Clicked playlist item at index:', index, 'videoId:', videoId);
                 this.playVideo(index);
+                // Close playlist panel on mobile after selection
+                if (window.innerWidth <= 768) {
+                    this.togglePlaylistPanel();
+                }
             }
         });
         
@@ -301,13 +316,13 @@ class GatherTubePlayer {
         item.addEventListener('drop', (e) => this.handleDrop(e, index));
         item.addEventListener('dragend', () => this.handleDragEnd());
         
-        // Load video title asynchronously
-        this.loadVideoTitle(videoId, item.querySelector('.item-title'));
+        // Load video title and duration asynchronously
+        this.loadVideoInfo(videoId, item.querySelector('.item-title'), item.querySelector('.item-duration'));
         
         return item;
     }
     
-    async loadVideoTitle(videoId, titleElement) {
+    async loadVideoInfo(videoId, titleElement, durationElement) {
         try {
             // Try to get title from YouTube API (basic method using oEmbed)
             const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
@@ -316,9 +331,18 @@ class GatherTubePlayer {
                 titleElement.textContent = data.title;
                 titleElement.title = data.title;
             }
+            
+            // Try to get duration from YouTube thumbnail API (limited info)
+            // Note: This is a basic approach - full duration would require YouTube Data API
+            const thumbnailResponse = await fetch(`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`);
+            if (thumbnailResponse.ok) {
+                // For now, show that we have video info
+                durationElement.textContent = '📹';
+            }
         } catch (error) {
-            // Fallback to generic title
-            console.warn('Failed to load video title:', error);
+            // Fallback to generic info
+            console.warn('Failed to load video info:', error);
+            durationElement.textContent = '--:--';
         }
     }
     
