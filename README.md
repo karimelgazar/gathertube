@@ -7,22 +7,33 @@ A powerful Chrome extension that gathers all open YouTube video tabs into a sing
 ## 🚀 Features
 
 ### Core Functionality
-- **One-Click Gathering**: Instantly collect all open YouTube video tabs
+- **One-Click Gathering**: Instantly collect all open YouTube video tabs from current window
 - **Two Queue Modes**: Choose between native YouTube playlists or custom embedded player
 - **Smart Detection**: Supports both `youtube.com/watch?v=` and `youtu.be/` URL formats
 - **Duplicate Removal**: Automatically removes duplicate video IDs
+- **Intelligent Video Sorting**: 6 sorting options for organizing your queue
+
+### Advanced Video Sorting
+- **Newest Tabs First**: Sort by tab access time (most recent first)
+- **Oldest Tabs First**: Sort by tab access time (oldest first)
+- **English Videos First**: Prioritize English content using language detection
+- **Non-English Videos First**: Prioritize non-English content
+- **Tabs Left to Right**: Sort by browser tab position (left to right)
+- **Tabs Right to Left**: Sort by browser tab position (right to left)
 
 ### Queue Management
 - **Drag & Drop Reordering**: Rearrange videos in your queue
 - **Individual Video Controls**: Play now, delete, or skip videos
 - **Queue Persistence**: Your queue survives browser restarts
 - **Shuffle Support**: Randomize your video order
+- **Auto-Next Playback**: Automatically advance to next video
 
 ### User Experience
 - **Keyboard Shortcuts**: Navigate quickly with hotkeys
-- **Clean Interface**: YouTube-inspired dark theme
+- **Dark Mode Interface**: Consistent dark theme across all pages
 - **Responsive Design**: Works on all screen sizes
 - **Settings Persistence**: Remember your preferences
+- **Current Window Focus**: Gathers only from active browser window
 
 ## 📦 Installation
 
@@ -30,7 +41,7 @@ A powerful Chrome extension that gathers all open YouTube video tabs into a sing
 
 1. **Clone or Download**
    ```bash
-   git clone https://github.com/your-username/gathertube.git
+   git clone https://github.com/karimelgazar/gathertube.git
    cd gathertube
    ```
 
@@ -83,12 +94,14 @@ A powerful Chrome extension that gathers all open YouTube video tabs into a sing
 #### Popup Settings
 - **Queue behavior**: Toggle between watch_videos and embedded player
 - **Close original tabs**: Automatically close gathered tabs
+- **Video order**: Choose from 6 sorting options for organizing your queue
 
 #### Advanced Settings
 - Access via extension popup → Settings
-- Set default behaviors
-- View extension information
-- Reset all data
+- Set default behaviors for all options
+- Configure default video sorting preference
+- View extension information and queue statistics
+- Reset all data and clear stored preferences
 
 ### Keyboard Shortcuts
 
@@ -137,7 +150,7 @@ gathertube/
 
 1. **Clone Repository**
    ```bash
-   git clone https://github.com/your-username/gathertube.git
+   git clone https://github.com/karimelgazar/gathertube.git
    cd gathertube
    ```
 
@@ -168,6 +181,7 @@ gathertube/
 
 #### No Videos Found
 - Ensure tabs contain YouTube video URLs (`youtube.com/watch?v=` or `youtu.be/`)
+- Extension only gathers from current browser window (this is the default behavior)
 - Check that tabs are not private/incognito (unless extension is enabled for incognito)
 - Verify URLs are not playlists or channel pages
 

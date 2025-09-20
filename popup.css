@@ -8,8 +8,8 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 14px;
     line-height: 1.4;
-    color: #333;
-    background: #fff;
+    color: #e0e0e0;
+    background: #1a1a1a;
     width: 320px;
     min-height: 400px;
 }
@@ -22,7 +22,7 @@ body {
     text-align: center;
     margin-bottom: 20px;
     padding-bottom: 16px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #333;
 }
 
 .logo {
@@ -42,7 +42,7 @@ h1 {
 
 .subtitle {
     font-size: 12px;
-    color: #666;
+    color: #999;
     margin: 0;
 }
 
@@ -64,7 +64,7 @@ h1 {
 
 .setting-text {
     font-size: 14px;
-    color: #333;
+    color: #e0e0e0;
     flex: 1;
 }
 
@@ -88,7 +88,7 @@ h1 {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #ccc;
+    background-color: #444;
     transition: 0.3s;
     border-radius: 20px;
 }
@@ -115,7 +115,7 @@ h1 {
 
 .toggle-option {
     font-size: 12px;
-    color: #666;
+    color: #999;
     min-width: 80px;
     text-align: right;
 }
@@ -128,12 +128,12 @@ h1 {
 }
 
 .sort-select {
-    background: #f8f9fa;
-    border: 1px solid #ddd;
+    background: #2d2d2d;
+    border: 1px solid #555;
     border-radius: 6px;
     padding: 8px 12px;
     font-size: 13px;
-    color: #333;
+    color: #e0e0e0;
     min-width: 160px;
     cursor: pointer;
     outline: none;
@@ -181,7 +181,7 @@ h1 {
 }
 
 .gather-btn:disabled {
-    background: #ccc;
+    background: #444;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
@@ -206,31 +206,31 @@ h1 {
 }
 
 .message.success {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
+    background: #1a3d1a;
+    color: #4caf50;
+    border: 1px solid #2d5a2d;
 }
 
 .message.error {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
+    background: #3d1a1a;
+    color: #f44336;
+    border: 1px solid #5a2d2d;
 }
 
 .message.info {
-    background: #d1ecf1;
-    color: #0c5460;
-    border: 1px solid #bee5eb;
+    background: #1a2a3d;
+    color: #2196f3;
+    border: 1px solid #2d3d5a;
 }
 
 .footer {
     text-align: center;
     padding-top: 12px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid #333;
 }
 
 .options-link {
-    color: #666;
+    color: #999;
     text-decoration: none;
     font-size: 12px;
     display: inline-flex;

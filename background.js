@@ -22,12 +22,11 @@ class GatherTubeBackground {
     }
     
     async setDefaultSettings() {
-        const result = await chrome.storage.local.get(['embedMode', 'closeTabs', 'currentWindowOnly', 'sortOrder']);
-        if (result.embedMode === undefined || result.closeTabs === undefined || result.currentWindowOnly === undefined || result.sortOrder === undefined) {
+        const result = await chrome.storage.local.get(['embedMode', 'closeTabs', 'sortOrder']);
+        if (result.embedMode === undefined || result.closeTabs === undefined || result.sortOrder === undefined) {
             await chrome.storage.local.set({
                 embedMode: false,
                 closeTabs: false,
-                currentWindowOnly: false,
                 sortOrder: 'newest'
             });
         }
@@ -35,7 +34,8 @@ class GatherTubeBackground {
     
     async handleGatherRequest(request, sendResponse) {
         try {
-            const { embedMode, closeTabs, currentWindowOnly, sortOrder } = request;
+            const { embedMode, closeTabs, sortOrder } = request;
+            const currentWindowOnly = true; // Always use current window only
             
             // Get all YouTube video tabs
             const videoData = await this.getYouTubeVideoTabs(currentWindowOnly);

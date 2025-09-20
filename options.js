@@ -17,7 +17,6 @@ class GatherTubeOptions {
         this.elements = {
             defaultEmbedMode: document.getElementById('defaultEmbedMode'),
             defaultCloseTabs: document.getElementById('defaultCloseTabs'),
-            defaultCurrentWindowOnly: document.getElementById('defaultCurrentWindowOnly'),
             defaultSortOrder: document.getElementById('defaultSortOrder'),
             defaultModeText: document.getElementById('defaultModeText'),
             resetSettings: document.getElementById('resetSettings'),
@@ -42,10 +41,6 @@ class GatherTubeOptions {
             this.saveSettings();
         });
         
-        this.elements.defaultCurrentWindowOnly.addEventListener('change', () => {
-            this.saveSettings();
-        });
-        
         this.elements.defaultSortOrder.addEventListener('change', () => {
             this.saveSettings();
         });
@@ -58,7 +53,7 @@ class GatherTubeOptions {
         // Footer links
         this.elements.reportIssue.addEventListener('click', (e) => {
             e.preventDefault();
-            this.openLink('https://github.com/your-repo/gathertube/issues');
+            this.openLink('https://github.com/karimelgazar/gathertube/issues');
         });
         
         this.elements.rateExtension.addEventListener('click', (e) => {
@@ -68,7 +63,7 @@ class GatherTubeOptions {
         
         this.elements.viewSource.addEventListener('click', (e) => {
             e.preventDefault();
-            this.openLink('https://github.com/your-repo/gathertube');
+            this.openLink('https://github.com/karimelgazar/gathertube');
         });
     }
     
@@ -77,13 +72,11 @@ class GatherTubeOptions {
             const result = await chrome.storage.local.get({
                 embedMode: false,
                 closeTabs: false,
-                currentWindowOnly: false,
                 sortOrder: 'newest'
             });
             
             this.elements.defaultEmbedMode.checked = result.embedMode;
             this.elements.defaultCloseTabs.checked = result.closeTabs;
-            this.elements.defaultCurrentWindowOnly.checked = result.currentWindowOnly;
             this.elements.defaultSortOrder.value = result.sortOrder;
             this.updateModeText();
         } catch (error) {
@@ -96,7 +89,6 @@ class GatherTubeOptions {
             await chrome.storage.local.set({
                 embedMode: this.elements.defaultEmbedMode.checked,
                 closeTabs: this.elements.defaultCloseTabs.checked,
-                currentWindowOnly: this.elements.defaultCurrentWindowOnly.checked,
                 sortOrder: this.elements.defaultSortOrder.value
             });
             
@@ -167,7 +159,6 @@ class GatherTubeOptions {
             // Reset form elements
             this.elements.defaultEmbedMode.checked = false;
             this.elements.defaultCloseTabs.checked = false;
-            this.elements.defaultCurrentWindowOnly.checked = false;
             this.elements.defaultSortOrder.value = 'newest';
             this.updateModeText();
             
