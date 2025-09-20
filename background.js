@@ -341,19 +341,39 @@ class GatherTubeBackground {
                     const updatedTab = await chrome.tabs.get(tab.id);
                     console.log(`YouTube Native tab after 3 seconds: ${updatedTab.url}`);
                     
-                    // If YouTube redirected to a single video instead of playlist, that might indicate an issue
-                    if (updatedTab.url && updatedTab.url.includes('/watch?v=') && !updatedTab.url.includes('list=')) {
-                        console.warn(`YouTube Native mode may have failed - redirected to single video: ${updatedTab.url}`);
+                    // Check if YouTube properly processed the queue
+                    if (updatedTab.url) {
+                        if (updatedTab.url.includes('list=') || updatedTab.url.includes('playlist?list=')) {
+                            console.log('✅ YouTube Native mode success - playlist detected');
+                        } else if (updatedTab.url.includes('/watch?v=') && videoIds.length > 1) {
+                            console.warn(`⚠️ YouTube Native mode may have failed - single video when expecting ${videoIds.length} videos`);
+                            console.warn(`Expected queue but got: ${updatedTab.url}`);
+                            
+                            // Try to add additional context or retry mechanism
+                            await chrome.storage.local.set({
+                                [`nativeModeFailed_${windowId}`]: true,
+                                [`failedNativeAttempt_${windowId}`]: {
+                                    originalUrl: queueUrl,
+                                    redirectedUrl: updatedTab.url,
+                                    videoCount: videoIds.length,
+                                    timestamp: Date.now()
+                                }
+                            });
+                        } else {
+                            console.log('YouTube Native tab processed successfully');
+                        }
                     }
                 } catch (error) {
-                    // Tab might have been closed or moved, ignore
+                    console.error('Error checking YouTube Native tab status:', error);
                 }
             }, 3000);
             
             return {
                 success: true,
                 url: queueUrl,
-                newTabId: tab.id
+                newTabId: tab.id,
+                mode: 'native',
+                videoCount: videoIds.length
             };
         } catch (error) {
             console.error('Failed to create watch_videos queue:', error);
@@ -409,7 +429,9 @@ class GatherTubeBackground {
             return {
                 success: true,
                 url: embedUrl,
-                newTabId: tab.id
+                newTabId: tab.id,
+                mode: 'embedded',
+                videoCount: videoIds.length
             };
         } catch (error) {
             return {
