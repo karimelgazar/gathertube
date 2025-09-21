@@ -1,8 +1,9 @@
 # GatherTube - YouTube Queue Builder
 
 A powerful Chrome extension that gathers all open YouTube video tabs into a single, organized queue for seamless watching.
-
-![GatherTube Demo](docs/demo.gif)
+<div align="center">
+  <img src="icons/logo.png" alt="GatherTube Logo" width="128" height="128">
+</div>
 
 ## 🚀 Features
 
