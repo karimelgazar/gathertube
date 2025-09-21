@@ -38,7 +38,7 @@ A powerful Chrome extension that gathers all open YouTube video tabs into a sing
 
 ## 📦 Installation
 
-### From Source (Recommended for Development)
+### Chrome Installation
 
 1. **Clone or Download**
    ```bash
@@ -50,14 +50,28 @@ A powerful Chrome extension that gathers all open YouTube video tabs into a sing
    - Open Chrome and go to `chrome://extensions/`
    - Enable "Developer mode" (top right toggle)
    - Click "Load unpacked"
-   - Select the extension folder
+   - Select the **root extension folder** (contains `manifest.json`)
 
-3. **Icons Included**
-   - The extension includes a custom logo and all required icon sizes
-   - Icons are automatically generated from the main logo.png
+### Firefox Installation
 
-### From Chrome Web Store
-*Coming soon - extension will be published after testing*
+1. **Clone Repository** (same as above)
+   ```bash
+   git clone https://github.com/karimelgazar/gathertube.git
+   cd gathertube
+   ```
+
+2. **Load in Firefox**
+   - Open Firefox and go to `about:debugging`
+   - Click "This Firefox" → "Load Temporary Add-on..."
+   - Navigate to the `firefox-build/` folder
+   - Select the `manifest.json` file inside `firefox-build/`
+
+3. **Detailed Firefox Guide**
+   - See `INSTALL-FIREFOX.md` for complete instructions
+   - Troubleshooting and permanent installation steps included
+
+### From Browser Stores
+*Coming soon - extensions will be published after testing*
 
 ## 🎯 Usage
 
@@ -120,11 +134,27 @@ A powerful Chrome extension that gathers all open YouTube video tabs into a sing
 #### Visual Feedback
 All keyboard shortcuts show visual confirmation when activated, displaying the action performed in the top-right corner of the player.
 
-## 🛠️ Technical Details
+## 🌍 Browser Support
+
+### Supported Browsers
+- ✅ **Google Chrome** (Manifest V3, Service Worker)
+- ✅ **Mozilla Firefox** (Manifest V2, Background Script)
+- ✅ **Microsoft Edge** (Chromium-based, same as Chrome)
+- ✅ **Brave Browser** (Chromium-based, same as Chrome)
+- ✅ **Opera** (Chromium-based, same as Chrome)
+
+### Cross-Browser Features
+- ✅ **100% Feature Parity** - All functionality works identically
+- ✅ **Independent Storage** - Settings and queues are separate per browser
+- ✅ **Automatic API Detection** - Uses appropriate browser APIs
+- ✅ **Same User Experience** - Identical interface and shortcuts
+
+## ⚙️ Technical Details
 
 ### Architecture
-- **Manifest V3**: Uses modern Chrome extension APIs
-- **Service Worker**: Handles background tab operations
+- **Chrome**: Manifest V3 with Service Worker
+- **Firefox**: Manifest V2 with Background Script 
+- **Cross-Browser APIs**: Automatic `browser.*` / `chrome.*` detection
 - **YouTube IFrame API**: Powers the embedded player
 - **Local Storage**: Persistent settings and queue data
 
@@ -136,13 +166,21 @@ All keyboard shortcuts show visual confirmation when activated, displaying the a
 ### File Structure
 ```
 gathertube/
-├── manifest.json          # Extension configuration
-├── popup.html/js/css      # Extension popup interface
-├── background.js          # Service worker for tab operations
-├── embed_page.html/js/css # Custom video player
-├── options.html/js        # Settings page
-├── icons/                 # Extension icons
-└── README.md             # This file
+├── manifest.json          # Chrome extension configuration (Manifest V3)
+├── popup.html/js/css      # Chrome extension popup interface
+├── background.js          # Chrome service worker for tab operations
+├── embed_page.html/js/css # Custom video player (shared)
+├── options.html/js        # Chrome settings page
+├── icons/                 # Extension icons (shared)
+├── firefox-build/         # Complete Firefox extension directory
+│   ├── manifest.json      # Firefox configuration (Manifest V2)
+│   ├── background.js      # Firefox background script
+│   ├── popup.html/js      # Firefox popup (cross-browser compatible)
+│   ├── options.js         # Firefox settings (cross-browser compatible)
+│   ├── embed_page.js      # Firefox video player (cross-browser compatible)
+│   └── icons/             # Extension icons (copied)
+├── INSTALL-FIREFOX.md     # Firefox installation guide
+└── README.md              # This file
 ```
 
 ## 🔧 Development
