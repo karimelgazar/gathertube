@@ -1,7 +1,7 @@
 # GatherTube for Firefox
 
 <div align="center">
-  <img src="icons/logo2.png" alt="GatherTube Logo" width="128" height="128">
+  <img src="icons/logo.png" alt="GatherTube Logo" width="128" height="128">
 </div>
 
 ## 🦊 Firefox Add-on Version
