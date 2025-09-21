@@ -1,0 +1,43 @@
+{
+  "manifest_version": 2,
+  "name": "GatherTube - YouTube Queue Builder",
+  "version": "1.0.0",
+  "description": "Gather all open YouTube video tabs into a single queue for seamless watching",
+  "permissions": [
+    "tabs",
+    "storage",
+    "*://*.youtube.com/*",
+    "*://*.youtu.be/*"
+  ],
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_title": "GatherTube",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "19": "icons/icon-19.png",
+      "32": "icons/icon-32.png",
+      "38": "icons/icon-38.png",
+      "48": "icons/icon-48.png",
+      "64": "icons/icon-64.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "background": {
+    "scripts": ["background-firefox.js"],
+    "persistent": false
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "19": "icons/icon-19.png",
+    "32": "icons/icon-32.png",
+    "38": "icons/icon-38.png",
+    "48": "icons/icon-48.png",
+    "64": "icons/icon-64.png",
+    "128": "icons/icon-128.png",
+    "256": "icons/icon-256.png"
+  },
+  "options_page": "options.html",
+  "web_accessible_resources": [
+    "embed_page.html"
+  ]
+}

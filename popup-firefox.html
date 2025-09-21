@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GatherTube</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <img src="icons/icon-32.png" alt="GatherTube">
+                <h1>GatherTube</h1>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="mode-section">
+                <div class="toggle-container">
+                    <label class="toggle">
+                        <input type="checkbox" id="embedMode">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <div class="mode-info">
+                        <span class="mode-label">Player Mode</span>
+                        <span class="mode-text" id="modeText">YouTube Native</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="options-section">
+                <div class="option">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="closeTabs">
+                        <span class="checkbox-custom"></span>
+                        Close original tabs
+                    </label>
+                </div>
+                
+                <div class="option">
+                    <label for="sortOrder">Video order</label>
+                    <select id="sortOrder" class="sort-select">
+                        <option value="newest">Newest tabs first</option>
+                        <option value="oldest">Oldest tabs first</option>
+                        <option value="english">English videos first</option>
+                        <option value="non-english">Non-English videos first</option>
+                        <option value="left-right">Tabs left to right</option>
+                        <option value="right-left">Tabs right to left</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button id="gatherBtn" class="gather-btn">
+                <span class="btn-text">Gather YT Videos</span>
+                <div class="loader" id="loader"></div>
+            </button>
+            
+            <div id="message" class="message" style="display: none;"></div>
+        </div>
+        
+        <div class="footer">
+            <a href="options.html" target="_blank" class="settings-link">Settings</a>
+        </div>
+    </div>
+    
+    <script src="popup-firefox.js"></script>
+</body>
+</html>
