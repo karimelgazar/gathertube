@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GatherTube</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="icons/logo.png" alt="GatherTube" class="logo" onerror="this.style.display='none'">
+            <h1>GatherTube</h1>
+            <p class="subtitle">Gather YouTube videos into a queue</p>
+        </div>
+        
+        <div class="settings">
+            <div class="setting-item">
+                <label class="toggle-label">
+                    <span class="setting-text">Queue behavior:</span>
+                    <div class="toggle-container">
+                        <input type="checkbox" id="embedMode" class="toggle-input">
+                        <span class="toggle-slider"></span>
+                    </div>
+                    <span class="toggle-option" id="modeText">YouTube Native</span>
+                </label>
+            </div>
+            
+            <div class="setting-item">
+                <label class="toggle-label">
+                    <span class="setting-text">Close original tabs after gather</span>
+                    <div class="toggle-container">
+                        <input type="checkbox" id="closeTabs" class="toggle-input">
+                        <span class="toggle-slider"></span>
+                    </div>
+                </label>
+            </div>
+            
+            
+            <div class="setting-item">
+                <label class="select-label">
+                    <span class="setting-text">Video order:</span>
+                    <select id="sortOrder" class="sort-select">
+                        <option value="newest">Newest tabs first</option>
+                        <option value="oldest">Oldest tabs first</option>
+                        <option value="english">English videos first</option>
+                        <option value="non-english">Non-English videos first</option>
+                        <option value="left-right">Tabs from left to right</option>
+                        <option value="right-left">Tabs from right to left</option>
+                    </select>
+                </label>
+            </div>
+        </div>
+        
+        <div class="actions">
+            <button id="gatherBtn" class="gather-btn">
+                <span class="btn-text">Gather YT Videos</span>
+                <span class="btn-loader" id="loader" style="display: none;">⟳</span>
+            </button>
+        </div>
+        
+        <div id="message" class="message" style="display: none;"></div>
+        
+        <div class="footer">
+            <a href="options.html" target="_blank" class="options-link">⚙️ Settings</a>
+        </div>
+    </div>
+    
+    <script src="popup.js"></script>
+</body>
+</html>
