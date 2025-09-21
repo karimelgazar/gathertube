@@ -1,6 +1,7 @@
+
 {
   "manifest_version": 2,
-  "name": "GatherTube - YouTube Queue Builder",
+  "name": "GatherTube",
   "version": "1.0.0",
   "description": "Gather all open YouTube video tabs into a single queue for seamless watching",
   "permissions": [
