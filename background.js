@@ -97,42 +97,53 @@ class GatherTubeBackground {
         const youtubeTabs = tabs.filter(tab => {
             if (!tab.url && !tab.title) return false;
             
-            // Check URL for YouTube patterns (including suspended/modified URLs)
             const urlToCheck = tab.url || '';
             const titleToCheck = tab.title || '';
             
-            // Multiple patterns to catch YouTube videos
-            const patterns = [
-                // Standard YouTube URLs
-                /youtube\.com\/watch/i,
-                /youtube\.com\/live/i,
-                /youtu\.be\//i,
-                // Suspended tab patterns (memory extensions)
-                /suspended.*youtube/i,
-                /youtube.*suspended/i,
-                // Check title for YouTube indicators
-                /youtube/i
+            // EXCLUDE playlist URLs explicitly
+            if (urlToCheck.includes('youtube.com/playlist') || 
+                urlToCheck.includes('/channel/') || 
+                urlToCheck.includes('/c/') || 
+                urlToCheck.includes('/user/') ||
+                urlToCheck.includes('youtube.com/feed') ||
+                urlToCheck.includes('youtube.com/results')) {
+                return false;
+            }
+            
+            // Only include actual VIDEO URLs
+            const videoPatterns = [
+                // Standard YouTube video URLs (must have v= parameter)
+                /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/i,
+                // YouTube live URLs
+                /youtube\.com\/live\/([a-zA-Z0-9_-]{11})/i,
+                // Short YouTube URLs
+                /youtu\.be\/([a-zA-Z0-9_-]{11})/i
             ];
             
-            // Check if URL or title matches any pattern
-            const matchesPattern = patterns.some(pattern => 
-                pattern.test(urlToCheck) || pattern.test(titleToCheck)
-            );
+            // Check if URL matches video patterns
+            const matchesVideoPattern = videoPatterns.some(pattern => pattern.test(urlToCheck));
             
-            if (!matchesPattern) return false;
-            
-            // Additional check: extract video ID if possible
-            const videoId = this.extractVideoId(urlToCheck) || this.extractVideoIdFromTitle(titleToCheck);
-            if (videoId) {
+            if (matchesVideoPattern) {
+                // Double-check by extracting video ID
+                const videoId = this.extractVideoId(urlToCheck);
+                return videoId !== null;
             }
-            return videoId !== null;
+            
+            // For suspended tabs or other edge cases, try title extraction
+            if ((urlToCheck.includes('suspended') && urlToCheck.includes('youtube')) || 
+                (titleToCheck.toLowerCase().includes('youtube'))) {
+                const videoId = this.extractVideoIdFromTitle(titleToCheck);
+                return videoId !== null;
+            }
+            
+            return false;
             
         }).map(tab => ({
             id: tab.id,
             url: tab.url,
             title: tab.title || 'YouTube Video',
-            index: tab.index, // Tab position for left-right/right-left sorting
-            lastAccessed: tab.lastAccessed || Date.now() // For newest/oldest sorting
+            index: tab.index,
+            lastAccessed: tab.lastAccessed || Date.now()
         }));
         
         return youtubeTabs;
@@ -161,18 +172,16 @@ class GatherTubeBackground {
     extractVideoId(url) {
         if (!url) return null;
         
-        // Multiple patterns to extract video IDs
+        // SPECIFIC patterns for video ID extraction (order matters - most specific first)
         const patterns = [
-            // Standard youtube.com/watch?v=ID
-            /[&?]v=([a-zA-Z0-9_-]{11})/,
-            // youtu.be/ID
-            /youtu\.be\/([a-zA-Z0-9_-]{11})/,
-            // youtube.com/live/ID
-            /youtube\.com\/live\/([a-zA-Z0-9_-]{11})/,
-            // Any 11-character YouTube video ID pattern
-            /(?:youtube\.com|youtu\.be).*[=/]([a-zA-Z0-9_-]{11})/,
-            // Extract from suspended URLs or other formats
-            /[=/]([a-zA-Z0-9_-]{11})(?:[&?#]|$)/
+            // Standard youtube.com/watch?v=VIDEO_ID (must be exactly ?v= or &v=)
+            /[?&]v=([a-zA-Z0-9_-]{11})(?:[&=#]|$)/,
+            // YouTube live URLs: youtube.com/live/VIDEO_ID
+            /youtube\.com\/live\/([a-zA-Z0-9_-]{11})(?:[?&#]|$)/,
+            // Short URLs: youtu.be/VIDEO_ID
+            /youtu\.be\/([a-zA-Z0-9_-]{11})(?:[?&#]|$)/,
+            // Embedded URLs: youtube.com/embed/VIDEO_ID
+            /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})(?:[?&#]|$)/
         ];
         
         for (const pattern of patterns) {
@@ -212,8 +221,27 @@ class GatherTubeBackground {
     }
     
     isValidVideoId(id) {
-        // Basic validation for YouTube video ID
-        return id && id.length === 11 && /^[a-zA-Z0-9_-]+$/.test(id);
+        if (!id || typeof id !== 'string') return false;
+        
+        // YouTube video IDs are exactly 11 characters
+        if (id.length !== 11) return false;
+        
+        // Must match the Base64 character set for video IDs
+        if (!/^[a-zA-Z0-9_-]+$/.test(id)) return false;
+        
+        // EXCLUDE known non-video ID patterns:
+        
+        // Playlist IDs start with 'PL' and are much longer
+        if (id.startsWith('PL')) return false;
+        
+        // Channel IDs start with 'UC' and are longer than 11 chars (but check anyway)
+        if (id.startsWith('UC')) return false;
+        
+        // Other YouTube list types
+        if (id.startsWith('UU') || id.startsWith('FL') || id.startsWith('LL')) return false;
+        
+        // Valid video ID
+        return true;
     }
     
     sortVideoData(videoData, sortOrder) {
@@ -292,91 +320,31 @@ class GatherTubeBackground {
     
     async createWatchVideosQueue(videoIds) {
         try {
-            // Get current window to ensure proper context
-            const currentWindow = await chrome.windows.getCurrent();
-            const windowId = currentWindow.id;
-            
-            // Use the correct format for YouTube playlist - try multiple approaches
+            // KISS - Keep It Simple, Stupid
+            // Just create the watch_videos URL exactly as you said
             const videoIdsParam = videoIds.join(',');
-            let queueUrl;
+            const queueUrl = `https://www.youtube.com/watch_videos?video_ids=${videoIdsParam}`;
             
-            // Try different URL formats based on video count and context
-            if (videoIds.length === 1) {
-                // Single video - use regular watch URL
-                queueUrl = `https://www.youtube.com/watch?v=${videoIds[0]}`;
-            } else if (videoIds.length <= 50) {
-                // Multiple videos - use watch_videos format
-                queueUrl = `https://www.youtube.com/watch_videos?video_ids=${videoIdsParam}`;
-            } else {
-                // Too many videos - fall back to embedded mode
-                console.log(`Too many videos (${videoIds.length}) for YouTube Native mode. Falling back to embedded mode.`);
+            console.log(`Creating YouTube Native queue with ${videoIds.length} videos`);
+            console.log(`URL: ${queueUrl}`);
+            
+            // Check URL length limit
+            if (queueUrl.length > this.MAX_URL_LENGTH) {
+                console.log(`URL too long (${queueUrl.length} chars), falling back to embedded mode`);
                 return await this.createEmbeddedQueue(videoIds);
             }
-            
-            // Check URL length limit - be more conservative for watch_videos
-            if (queueUrl.length > this.MAX_URL_LENGTH || videoIds.length > 50) {
-                console.log(`YouTube Native mode: URL too long (${queueUrl.length} chars) or too many videos (${videoIds.length}). Falling back to embedded mode.`);
-                return await this.createEmbeddedQueue(videoIds);
-            }
-            
-            console.log(`Creating YouTube Native queue with ${videoIds.length} videos in window ${windowId}`);
-            console.log(`Queue URL length: ${queueUrl.length} characters`);
-            console.log(`Watch videos URL: ${queueUrl}`);
-            
-            // Store video IDs for potential debugging and window-specific tracking
-            await chrome.storage.local.set({
-                [`nativeQueue_${windowId}`]: videoIds,
-                [`nativeQueueTimestamp_${windowId}`]: Date.now(),
-                [`lastNativeUrl_${windowId}`]: queueUrl
-            });
             
             const tab = await chrome.tabs.create({
                 url: queueUrl,
                 active: true
             });
             
-            // Set a timeout to check if the YouTube page properly loaded the queue
-            setTimeout(async () => {
-                try {
-                    const updatedTab = await chrome.tabs.get(tab.id);
-                    console.log(`YouTube Native tab after 3 seconds: ${updatedTab.url}`);
-                    
-                    // Check if YouTube properly processed the queue
-                    if (updatedTab.url) {
-                        if (updatedTab.url.includes('list=') || updatedTab.url.includes('playlist?list=')) {
-                            console.log('✅ YouTube Native mode success - playlist detected');
-                        } else if (updatedTab.url.includes('/watch?v=') && videoIds.length > 1) {
-                            console.warn(`⚠️ YouTube Native mode may have failed - single video when expecting ${videoIds.length} videos`);
-                            console.warn(`Expected queue but got: ${updatedTab.url}`);
-                            
-                            // Try to add additional context or retry mechanism
-                            await chrome.storage.local.set({
-                                [`nativeModeFailed_${windowId}`]: true,
-                                [`failedNativeAttempt_${windowId}`]: {
-                                    originalUrl: queueUrl,
-                                    redirectedUrl: updatedTab.url,
-                                    videoCount: videoIds.length,
-                                    timestamp: Date.now()
-                                }
-                            });
-                        } else {
-                            console.log('YouTube Native tab processed successfully');
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error checking YouTube Native tab status:', error);
-                }
-            }, 3000);
-            
             return {
                 success: true,
                 url: queueUrl,
-                newTabId: tab.id,
-                mode: 'native',
-                videoCount: videoIds.length
+                newTabId: tab.id
             };
         } catch (error) {
-            console.error('Failed to create watch_videos queue:', error);
             return {
                 success: false,
                 message: 'Failed to create watch_videos queue: ' + error.message
@@ -420,18 +388,13 @@ class GatherTubeBackground {
             // Store video IDs for the embed page with window-specific key
             await chrome.storage.local.set({
                 [`currentQueue_${windowId}`]: videoIds,
-                [`queueTimestamp_${windowId}`]: Date.now(),
-                // Keep the old keys for backward compatibility, but use window-specific for new sessions
-                currentQueue: videoIds,
-                queueTimestamp: Date.now()
+                [`queueTimestamp_${windowId}`]: Date.now()
             });
             
             return {
                 success: true,
                 url: embedUrl,
-                newTabId: tab.id,
-                mode: 'embedded',
-                videoCount: videoIds.length
+                newTabId: tab.id
             };
         } catch (error) {
             return {
