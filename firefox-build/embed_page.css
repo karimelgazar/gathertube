@@ -90,7 +90,8 @@ body {
     font-weight: 600;
 }
 
-.open-youtube, .open-queue-youtube {
+.open-youtube,
+.open-queue-youtube {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
@@ -106,17 +107,32 @@ body {
     font-weight: 500;
 }
 
-.open-youtube:hover, .open-queue-youtube:hover {
+#openQueueInYoutube svg,
+#openQueueInYoutube span {
+    vertical-align: middle;
+}
+
+#openInYoutube svg,
+#openInYoutube span {
+    vertical-align: middle;
+}
+
+
+.open-youtube:hover,
+.open-queue-youtube:hover {
     background: rgba(255, 255, 255, 0.2);
 }
 
-.open-youtube svg, .open-queue-youtube svg, .playlist-toggle svg {
+.open-youtube svg,
+.open-queue-youtube svg,
+.playlist-toggle svg {
     flex-shrink: 0;
     width: 20px;
     height: 20px;
 }
 
-.open-youtube span, .open-queue-youtube span {
+.open-youtube span,
+.open-queue-youtube span {
     white-space: nowrap;
     vertical-align: middle;
 }
@@ -274,7 +290,9 @@ body {
     gap: 8px;
 }
 
-.clear-btn, .close-btn, .shuffle-btn {
+.clear-btn,
+.close-btn,
+.shuffle-btn {
     background: none;
     border: none;
     color: #aaa;
@@ -287,13 +305,15 @@ body {
     justify-content: center;
 }
 
-.clear-btn svg, .shuffle-btn svg {
+.clear-btn svg,
+.shuffle-btn svg {
     fill: currentColor;
     width: 16px;
     height: 16px;
 }
 
-.clear-btn:hover, .shuffle-btn:hover {
+.clear-btn:hover,
+.shuffle-btn:hover {
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
 }
@@ -466,8 +486,13 @@ body {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Drag and Drop */
@@ -485,18 +510,18 @@ body {
     .player-container {
         padding: 12px;
     }
-    
+
     .playlist-panel {
         width: 100vw;
         right: -100vw;
     }
-    
+
     .header {
         flex-direction: column;
         gap: 12px;
         align-items: flex-start;
     }
-    
+
     .header h1 {
         font-size: 20px;
     }
