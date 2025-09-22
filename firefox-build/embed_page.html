@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GatherTube Player</title>
     <link rel="stylesheet" href="embed_page.css">
 </head>
+
 <body>
     <div class="player-container">
         <div class="header">
@@ -13,23 +15,38 @@
                 <img src="icons/logo.png" alt="GatherTube" class="logo" onerror="this.style.display='none'">
                 <h1>GatherTube Player</h1>
             </div>
-            
+
             <div class="controls">
+                <button id="openQueueInYoutube" class="open-queue-youtube" title="Open Queue On YouTube"
+                    style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                        fill="currentColor">
+                        <path
+                            d="M23.498 6.186a2.832 2.832 0 0 0-2.244-2.768C19.424 3 12 3 12 3s-7.424 0-9.254.418A2.832 2.832 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a2.832 2.832 0 0 0 2.244 2.768C4.576 21 12 21 12 21s7.424 0 9.254-.418a2.832 2.832 0 0 0 2.244-2.768C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                    </svg>
+                    <span>Open Queue On YouTube</span>
+                </button>
+
                 <button id="playlistToggle" class="playlist-toggle" title="Toggle Playlist">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M3 10h11v2H3V10zm0-4h11v2H3V6zm0 8h7v2H3v-2zm13.59-2.41L15 13.17V18c0 .55.45 1 1 1s1-.45 1-1v-4.83l1.59 1.58c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41L18.41 11.17c-.39-.39-1.02-.39-1.41 0L15.41 13.76c-.39.39-.39 1.02 0 1.41s1.02.39 1.41 0z"/>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                        fill="currentColor">
+                        <path d="M21 16h-7v-1h7v1zm0-5H9v1h12v-1zm0-4H3v1h18V7zm-11 8-7-4v8l7-4z"></path>
                     </svg>
                     <span class="queue-count" id="queueCount">0</span>
                 </button>
-                
-                <button id="openInYoutube" class="open-youtube" title="Open in YouTube" style="display: none;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M23.498 6.186a2.832 2.832 0 0 0-2.244-2.768C19.424 3 12 3 12 3s-7.424 0-9.254.418A2.832 2.832 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a2.832 2.832 0 0 0 2.244 2.768C4.576 21 12 21 12 21s7.424 0 9.254-.418a2.832 2.832 0 0 0 2.244-2.768C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+
+                <button id="openInYoutube" class="open-youtube" title="Open On YouTube" style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                        fill="currentColor">
+                        <path
+                            d="M15 5.63 20.66 12 15 18.37V14h-1c-3.96 0-7.14 1-9.75 3.09 1.84-4.07 5.11-6.4 9.89-7.1l.86-.13V5.63M14 3v6C6.22 10.13 3.11 15.33 2 21c2.78-3.97 6.44-6 12-6v6l8-9-8-9z">
+                        </path>
                     </svg>
+                    <span>Open On YouTube</span>
                 </button>
             </div>
         </div>
-        
+
         <div class="video-section">
             <div id="player-wrapper">
                 <div id="player"></div>
@@ -47,7 +64,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="error-message" id="errorMessage" style="display: none;">
             <div class="error-content">
                 <h3>⚠️ Unable to Load Videos</h3>
@@ -56,25 +73,29 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Playlist Panel -->
     <div id="playlistPanel" class="playlist-panel">
         <div class="playlist-header">
             <h3>Queue</h3>
             <div class="playlist-actions">
                 <button id="clearQueue" class="clear-btn" title="Clear Queue">
-                    <svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" height="24" viewBox="0 0 24 24" width="24" focusable="false" aria-hidden="true" style="pointer-events: none; display: inherit; width: 100%; height: 100%;"><path d="M11 17H9V8h2v9zm4-9h-2v9h2V8zm4-4v1h-1v16H6V5H5V4h4V3h6v1h4zm-2 1H7v15h10V5z"></path></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" height="24"
+                        viewBox="0 0 24 24" width="24" focusable="false" aria-hidden="true"
+                        style="pointer-events: none; display: inherit; width: 100%; height: 100%;">
+                        <path d="M11 17H9V8h2v9zm4-9h-2v9h2V8zm4-4v1h-1v16H6V5H5V4h4V3h6v1h4zm-2 1H7v15h10V5z"></path>
+                    </svg>
                 </button>
                 <button id="closePanel" class="close-btn" title="Close Panel">×</button>
             </div>
         </div>
-        
+
         <div class="playlist-content">
             <div id="playlistItems" class="playlist-items">
                 <!-- Playlist items will be dynamically generated -->
             </div>
         </div>
-        
+
         <div class="playlist-footer">
             <div class="queue-stats">
                 <span id="playlistCount">0</span> videos
@@ -82,7 +103,7 @@
             <button id="shuffleQueue" class="shuffle-btn" title="Shuffle Queue">🔀</button>
         </div>
     </div>
-    
+
     <!-- Loading overlay -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="loader">
@@ -90,8 +111,9 @@
             <p>Loading videos...</p>
         </div>
     </div>
-    
+
     <!-- YouTube IFrame API will be loaded dynamically -->
     <script src="embed_page.js"></script>
 </body>
+
 </html>

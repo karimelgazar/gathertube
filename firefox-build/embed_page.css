@@ -23,11 +23,12 @@ body {
 
 .header {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
     padding: 8px 16px;
     border-bottom: 1px solid #333;
     flex-shrink: 0;
+    gap: 12px;
 }
 
 .logo-section {
@@ -66,6 +67,9 @@ body {
     color: #fff;
     cursor: pointer;
     transition: all 0.2s ease;
+    height: 40px;
+    font-size: 13px;
+    font-weight: 500;
 }
 
 .playlist-toggle:hover {
@@ -86,18 +90,35 @@ body {
     font-weight: 600;
 }
 
-.open-youtube {
+.open-youtube, .open-queue-youtube {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
-    padding: 8px;
+    padding: 8px 12px;
     color: #fff;
     cursor: pointer;
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    font-size: 13px;
+    font-weight: 500;
 }
 
-.open-youtube:hover {
+.open-youtube:hover, .open-queue-youtube:hover {
     background: rgba(255, 255, 255, 0.2);
+}
+
+.open-youtube svg, .open-queue-youtube svg, .playlist-toggle svg {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+}
+
+.open-youtube span, .open-queue-youtube span {
+    white-space: nowrap;
+    vertical-align: middle;
 }
 
 .video-section {
