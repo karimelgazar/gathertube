@@ -38,7 +38,7 @@ Provide a complete, developer-ready Requirements and Product Design document for
 1. Steps 1–4 same.
 2. Open extension's embedded player page (extension page or a chosen YouTube tab) and pass the collected IDs.
 3. Use YouTube IFrame API to `cuePlaylist` with the array of IDs.
-4. Display a top-right playlist icon in the embedded player page; when clicked, open a playlist panel that visually and functionally matches native YouTube queue: reorder via drag/drop, delete items, play now, and optionally save the queue to `watch_videos` URL or provide a "Open in YouTube" link.
+4. Display a top-right playlist icon in the embedded player page; when clicked, open a playlist panel that visually and functionally matches native YouTube queue: reorder via drag/drop, delete items, play now, and optionally save the queue to `watch_videos` URL or provide a "Open On YouTube" link.
 5. If close‑tabs toggle enabled: close original tabs.
 
 ---
