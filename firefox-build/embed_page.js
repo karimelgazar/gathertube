@@ -402,21 +402,48 @@ class GatherTubePlayer {
         item.dataset.videoId = videoId;
 
         const thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+        const fallbackSvg = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCA0OCAzNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDgiIGhlaWdodD0iMzYiIGZpbGw9IiMzMzMiLz48cGF0aCBkPSJNMjAgMTJMMjggMTguNUwyMCAyNVYxMloiIGZpbGw9IiM2NjYiLz48L3N2Zz4=';
 
-        item.innerHTML = `
-            <div class="drag-handle">⋮⋮</div>
-            <img class="item-thumbnail" src="${thumbnailUrl}" alt="Thumbnail" 
-                 onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iMzYiIHZpZXdCb3g9IjAgMCA0OCAzNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDgiIGhlaWdodD0iMzYiIGZpbGw9IiMzMzMiLz48cGF0aCBkPSJNMjAgMTJMMjggMTguNUwyMCAyNVYxMloiIGZpbGw9IiM2NjYiLz48L3N2Zz4='">
-            <div class="item-info">
-                <div class="item-title" title="Video ${index + 1}">Loading...</div>
-                <div class="item-duration">Video</div>
-            </div>
-            <div class="item-actions">
-                <button class="delete-btn" title="Remove">
-                    <svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" height="24" viewBox="0 0 24 24" width="24" focusable="false" aria-hidden="true" style="pointer-events: none; display: inherit; width: 100%; height: 100%;"><path d="M11 17H9V8h2v9zm4-9h-2v9h2V8zm4-4v1h-1v16H6V5H5V4h4V3h6v1h4zm-2 1H7v15h10V5z"></path></svg>
-                </button>
-            </div>
-        `;
+        // Create elements safely without innerHTML
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'drag-handle';
+        dragHandle.textContent = '⋮⋮';
+
+        const thumbnail = document.createElement('img');
+        thumbnail.className = 'item-thumbnail';
+        thumbnail.src = thumbnailUrl;
+        thumbnail.alt = 'Thumbnail';
+        thumbnail.onerror = function() { this.src = fallbackSvg; };
+
+        const itemInfo = document.createElement('div');
+        itemInfo.className = 'item-info';
+        
+        const itemTitle = document.createElement('div');
+        itemTitle.className = 'item-title';
+        itemTitle.title = `Video ${index + 1}`;
+        itemTitle.textContent = 'Loading...';
+        
+        const itemDuration = document.createElement('div');
+        itemDuration.className = 'item-duration';
+        itemDuration.textContent = 'Video';
+        
+        itemInfo.appendChild(itemTitle);
+        itemInfo.appendChild(itemDuration);
+
+        const itemActions = document.createElement('div');
+        itemActions.className = 'item-actions';
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.title = 'Remove';
+        deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" height="24" viewBox="0 0 24 24" width="24" focusable="false" aria-hidden="true" style="pointer-events: none; display: inherit; width: 100%; height: 100%;"><path d="M11 17H9V8h2v9zm4-9h-2v9h2V8zm4-4v1h-1v16H6V5H5V4h4V3h6v1h4zm-2 1H7v15h10V5z"></path></svg>';
+        
+        itemActions.appendChild(deleteBtn);
+        
+        item.appendChild(dragHandle);
+        item.appendChild(thumbnail);
+        item.appendChild(itemInfo);
+        item.appendChild(itemActions);
 
         // Bind events
         item.addEventListener('click', (e) => {

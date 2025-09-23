@@ -1,9 +1,17 @@
-
 {
   "manifest_version": 2,
   "name": "GatherTube",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Gather all open YouTube video tabs into a single queue for seamless watching",
+  "browser_specific_settings": {
+    "gecko": {
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  },
   "permissions": [
     "tabs",
     "storage",
@@ -24,7 +32,9 @@
     }
   },
   "background": {
-    "scripts": ["background.js"],
+    "scripts": [
+      "background.js"
+    ],
     "persistent": false
   },
   "icons": {
