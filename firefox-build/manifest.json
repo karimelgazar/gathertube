@@ -2,7 +2,7 @@
 {
   "manifest_version": 2,
   "name": "GatherTube",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Gather all open YouTube video tabs into a single queue for seamless watching",
   "permissions": [
     "tabs",
