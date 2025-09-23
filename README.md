@@ -3,7 +3,18 @@
 A powerful Chrome extension that gathers all open YouTube video tabs into a single, organized queue for seamless watching.
 <div align="center">
   <img src="icons/logo.png" alt="GatherTube Logo" width="128" height="128">
+  <br>
+   <a href="https://chromewebstore.google.com/detail/gathertube/fmllpbgakbdnamlmdgjhphglebmnoend" rel="Download GatherTube Extension">
+      <img src="https://embedsignage.com/wp-content/uploads/2016/04/embed-signage-chromeos-web-store-button.png" alt="Download GatherTube Extension" width="300" />
+   </a>
+  <br>
+  
+  ⚠️🦊 Firefox Store coming soon, you can install it from the repo manually for now! 
+
 </div>
+
+
+
 
 ## 🚀 Features
 
