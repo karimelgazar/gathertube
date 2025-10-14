@@ -1,16 +1,16 @@
 # GatherTube - YouTube Queue Builder
+<div align="center">
+  <img src="icons/logo.png" alt="GatherTube Logo" width="128" height="128">
+</div>
 
 A powerful Chrome extension that gathers all open YouTube video tabs into a single, organized queue for seamless watching.
 <div align="center">
-  <img src="icons/logo.png" alt="GatherTube Logo" width="128" height="128">
-  <br>
-   <a href="https://chromewebstore.google.com/detail/gathertube/fmllpbgakbdnamlmdgjhphglebmnoend" rel="Download GatherTube Extension" target="_blank">
-      <img src="https://embedsignage.com/wp-content/uploads/2016/04/embed-signage-chromeos-web-store-button.png" alt="Download GatherTube Extension" width="300" />
+   <a href="https://chromewebstore.google.com/detail/gathertube/fmllpbgakbdnamlmdgjhphglebmnoend" rel="Download GatherTube Extension" target="_blank" style="margin-right: 20px;">
+      <img src="./icons/chrome_store_badge.png" alt="Download GatherTube Extension" width="300" />
    </a>
-  <br>
-  
-  ⚠️🦊 Firefox Store coming soon, you can install it from the repo manually for now! 
-
+   <a href="https://addons.mozilla.org/en-US/firefox/addon/gathertube" rel="Download GatherTube Extension" target="_blank">
+   <img src="./icons/firefox_store_badge.png" width="300" alt="Download GatherTube Extension" />
+   </a>
 </div>
 
 
