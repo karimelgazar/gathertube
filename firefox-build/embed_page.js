@@ -125,6 +125,10 @@ class GatherTubePlayer {
     }
 
     async saveQueue() {
+        // Keep the page URL in step with the queue, so reloading the page or restoring
+        // the browser session brings back the edited queue instead of the original one
+        history.replaceState(null, '', `?ids=${encodeURIComponent(this.videoIds.join(','))}&windowId=${this.windowId}`);
+
         try {
             // Use window-specific storage key for per-window isolation
             const storageKey = this.windowId ? `currentQueue_${this.windowId}` : 'currentQueue';
@@ -157,7 +161,7 @@ class GatherTubePlayer {
 
             // Build single video URL for iframe with JS API enabled for event detection
             // Use YouTube-nocookie domain and strong parameters to disable endscreen
-            const iframeSrc = `https://www.youtube-nocookie.com/embed/${this.videoIds[0]}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&fs=0&disablekb=1&origin=${window.location.origin}`;
+            const iframeSrc = `https://www.youtube-nocookie.com/embed/${this.videoIds[this.currentVideoIndex]}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&fs=0&disablekb=1&origin=${window.location.origin}`;
 
             // Create and configure iframe
             const iframe = document.createElement('iframe');
@@ -461,6 +465,12 @@ class GatherTubePlayer {
             this.removeFromQueue(index);
         });
 
+        // Drag and drop events
+        item.addEventListener('dragstart', (e) => this.handleDragStart(e, index));
+        item.addEventListener('dragover', (e) => this.handleDragOver(e));
+        item.addEventListener('drop', (e) => this.handleDrop(e, index));
+        item.addEventListener('dragend', () => this.handleDragEnd());
+
         // Load video title asynchronously
         this.loadVideoInfo(videoId, item.querySelector('.item-title'), item.querySelector('.item-duration'));
 
@@ -556,6 +566,66 @@ class GatherTubePlayer {
         this.saveQueue();
     }
 
+    handleDragStart(e, index) {
+        this.draggedItem = { index, element: e.target };
+        e.target.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    }
+
+    handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        const target = e.target.closest('.playlist-item');
+        if (target && target !== this.draggedItem?.element) {
+            target.classList.add('drag-over');
+        }
+    }
+
+    handleDrop(e, dropIndex) {
+        e.preventDefault();
+
+        if (!this.draggedItem || this.draggedItem.index === dropIndex) return;
+
+        const dragIndex = this.draggedItem.index;
+        const videoId = this.videoIds[dragIndex];
+
+        // Remove from old position
+        this.videoIds.splice(dragIndex, 1);
+
+        // Take the target's place, so dragging down puts the item below the target
+        // and dragging onto the last item moves it to the end
+        const newDropIndex = dropIndex;
+
+        // Insert at new position
+        this.videoIds.splice(newDropIndex, 0, videoId);
+
+        // Update current index
+        if (dragIndex === this.currentVideoIndex) {
+            this.currentVideoIndex = newDropIndex;
+        } else if (dragIndex < this.currentVideoIndex && newDropIndex >= this.currentVideoIndex) {
+            this.currentVideoIndex--;
+        } else if (dragIndex > this.currentVideoIndex && newDropIndex <= this.currentVideoIndex) {
+            this.currentVideoIndex++;
+        }
+
+        this.renderPlaylist();
+        this.updateUI();
+        this.saveQueue();
+    }
+
+    handleDragEnd() {
+        if (this.draggedItem) {
+            this.draggedItem.element.classList.remove('dragging');
+        }
+
+        document.querySelectorAll('.playlist-item.drag-over').forEach(item => {
+            item.classList.remove('drag-over');
+        });
+
+        this.draggedItem = null;
+    }
+
     openQueueInYouTube() {
         if (this.videoIds.length === 0) return;
 
@@ -588,6 +658,7 @@ class GatherTubePlayer {
                 if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
                     e.preventDefault();
                     e.stopPropagation();
+                    this.showShortcutFeedback('Next Video (Shift + →)');
                     this.playNext();
                 }
                 break;
@@ -596,6 +667,7 @@ class GatherTubePlayer {
                 if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
                     e.preventDefault();
                     e.stopPropagation();
+                    this.showShortcutFeedback('Previous Video (Shift + ←)');
                     this.playPrevious();
                 }
                 break;
@@ -605,6 +677,7 @@ class GatherTubePlayer {
                 if (!hasModifiers) {
                     e.preventDefault();
                     e.stopPropagation();
+                    this.showShortcutFeedback('Toggle Playlist (P)');
                     this.togglePlaylistPanel();
                 }
                 break;
@@ -613,6 +686,7 @@ class GatherTubePlayer {
                 if (this.isPlaylistPanelOpen && !hasModifiers) {
                     e.preventDefault();
                     e.stopPropagation();
+                    this.showShortcutFeedback('Close Playlist (Escape)');
                     this.togglePlaylistPanel();
                 }
                 break;
@@ -622,6 +696,7 @@ class GatherTubePlayer {
                 if (!hasModifiers) {
                     e.preventDefault();
                     e.stopPropagation();
+                    this.showShortcutFeedback('Next Video (N)');
                     this.playNext();
                 }
                 break;
@@ -631,6 +706,7 @@ class GatherTubePlayer {
                 if (!hasModifiers) {
                     e.preventDefault();
                     e.stopPropagation();
+                    this.showShortcutFeedback('Previous Video (B)');
                     this.playPrevious();
                 }
                 break;
@@ -656,6 +732,44 @@ class GatherTubePlayer {
         this.elements.loadingOverlay.style.display = 'none';
     }
 
+    showShortcutFeedback(message) {
+        // Create or update keyboard shortcut feedback
+        let feedbackDiv = document.getElementById('shortcut-feedback');
+        if (!feedbackDiv) {
+            feedbackDiv = document.createElement('div');
+            feedbackDiv.id = 'shortcut-feedback';
+            feedbackDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: rgba(255, 0, 0, 0.9);
+                color: white;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 14px;
+                font-weight: 600;
+                z-index: 10000;
+                opacity: 0;
+                transition: opacity 0.3s ease;
+                pointer-events: none;
+            `;
+            document.body.appendChild(feedbackDiv);
+        }
+
+        feedbackDiv.textContent = message;
+        feedbackDiv.style.opacity = '1';
+
+        // Clear existing timeout
+        if (this.shortcutFeedbackTimeout) {
+            clearTimeout(this.shortcutFeedbackTimeout);
+        }
+
+        // Hide after 1 second
+        this.shortcutFeedbackTimeout = setTimeout(() => {
+            feedbackDiv.style.opacity = '0';
+        }, 1000);
+    }
+
     showError(message) {
         this.elements.errorText.textContent = message;
         this.elements.errorMessage.style.display = 'block';
@@ -667,11 +781,12 @@ class GatherTubePlayer {
     }
 
     retry() {
+        this.cleanup();
         this.hideError();
         this.parseVideoIds();
         if (this.videoIds.length > 0) {
             this.showLoading();
-            this.initPlayer();
+            this.initIframePlayer();
         }
     }
 }

@@ -1,4 +1,4 @@
-// Options JavaScript for GatherTube extension - Firefox Compatible
+// Options Page JavaScript for GatherTube extension - Firefox Compatible
 // Uses browser.* APIs with chrome.* fallback for cross-browser compatibility
 
 // Cross-browser API compatibility
@@ -6,20 +6,69 @@ const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
 class GatherTubeOptions {
     constructor() {
-        this.embedModeCheckbox = document.getElementById('embedMode');
-        this.closeTabsCheckbox = document.getElementById('closeTabs');
-        this.sortOrderSelect = document.getElementById('sortOrder');
-        this.saveBtn = document.getElementById('saveBtn');
-        this.resetBtn = document.getElementById('resetBtn');
-        this.messageDiv = document.getElementById('message');
-        
+        this.elements = {};
         this.init();
     }
     
-    async init() {
-        await this.loadSettings();
+    init() {
+        this.initElements();
         this.bindEvents();
-        this.updateVersionInfo();
+        this.loadSettings();
+        this.loadExtensionInfo();
+    }
+
+    initElements() {
+        this.elements = {
+            defaultEmbedMode: document.getElementById('defaultEmbedMode'),
+            defaultCloseTabs: document.getElementById('defaultCloseTabs'),
+            defaultSortOrder: document.getElementById('defaultSortOrder'),
+            defaultModeText: document.getElementById('defaultModeText'),
+            resetSettings: document.getElementById('resetSettings'),
+            messageDiv: document.getElementById('message'),
+            version: document.getElementById('version'),
+            queueSize: document.getElementById('queueSize'),
+            lastUpdate: document.getElementById('lastUpdate'),
+            reportIssue: document.getElementById('reportIssue'),
+            rateExtension: document.getElementById('rateExtension'),
+            viewSource: document.getElementById('viewSource')
+        };
+    }
+
+    bindEvents() {
+        // Settings changes
+        this.elements.defaultEmbedMode.addEventListener('change', () => {
+            this.updateModeText();
+            this.saveSettings();
+        });
+
+        this.elements.defaultCloseTabs.addEventListener('change', () => {
+            this.saveSettings();
+        });
+
+        this.elements.defaultSortOrder.addEventListener('change', () => {
+            this.saveSettings();
+        });
+
+        // Reset button
+        this.elements.resetSettings.addEventListener('click', () => {
+            this.resetAllSettings();
+        });
+
+        // Footer links
+        this.elements.reportIssue.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.openLink('https://github.com/karimelgazar/gathertube/issues');
+        });
+
+        this.elements.rateExtension.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.openLink('https://addons.mozilla.org/firefox/addon/gathertube/');
+        });
+
+        this.elements.viewSource.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.openLink('https://github.com/karimelgazar/gathertube');
+        });
     }
     
     async loadSettings() {
@@ -30,9 +79,10 @@ class GatherTubeOptions {
                 sortOrder: 'newest'
             });
             
-            this.embedModeCheckbox.checked = result.embedMode;
-            this.closeTabsCheckbox.checked = result.closeTabs;
-            this.sortOrderSelect.value = result.sortOrder;
+            this.elements.defaultEmbedMode.checked = result.embedMode;
+            this.elements.defaultCloseTabs.checked = result.closeTabs;
+            this.elements.defaultSortOrder.value = result.sortOrder;
+            this.updateModeText();
         } catch (error) {
             this.showMessage('Failed to load settings', 'error');
         }
@@ -41,96 +91,115 @@ class GatherTubeOptions {
     async saveSettings() {
         try {
             await browserAPI.storage.local.set({
-                embedMode: this.embedModeCheckbox.checked,
-                closeTabs: this.closeTabsCheckbox.checked,
-                sortOrder: this.sortOrderSelect.value
+                embedMode: this.elements.defaultEmbedMode.checked,
+                closeTabs: this.elements.defaultCloseTabs.checked,
+                sortOrder: this.elements.defaultSortOrder.value
             });
             
-            this.showMessage('Settings saved successfully!', 'success');
+            this.showMessage('Settings saved successfully', 'success');
         } catch (error) {
             this.showMessage('Failed to save settings', 'error');
         }
     }
     
-    async resetSettings() {
-        if (confirm('Are you sure you want to reset all settings to default values?')) {
-            try {
-                await browserAPI.storage.local.clear();
-                
-                // Set default values
-                await browserAPI.storage.local.set({
-                    embedMode: false,
-                    closeTabs: false,
-                    sortOrder: 'newest'
-                });
-                
-                // Reload settings to update UI
-                await this.loadSettings();
-                
-                this.showMessage('Settings reset to defaults successfully!', 'success');
-            } catch (error) {
-                this.showMessage('Failed to reset settings', 'error');
+    updateModeText() {
+        this.elements.defaultModeText.textContent =
+            this.elements.defaultEmbedMode.checked ? 'Embedded Player' : 'YouTube Native';
+    }
+
+    async loadExtensionInfo() {
+        try {
+            // Load manifest version
+            const manifest = browserAPI.runtime.getManifest();
+            this.elements.version.textContent = manifest.version;
+
+            // Load queue info. Queues are stored per window (currentQueue_<windowId>),
+            // so show the most recently updated one
+            const stored = await browserAPI.storage.local.get(null);
+            const result = {};
+            Object.keys(stored).forEach(key => {
+                if (key.startsWith('queueTimestamp_') && (!result.queueTimestamp || stored[key] > result.queueTimestamp)) {
+                    result.queueTimestamp = stored[key];
+                    result.currentQueue = stored['currentQueue_' + key.slice('queueTimestamp_'.length)];
+                }
+            });
+
+            if (result.currentQueue && Array.isArray(result.currentQueue)) {
+                this.elements.queueSize.textContent = result.currentQueue.length;
+            } else {
+                this.elements.queueSize.textContent = '0';
             }
+
+            if (result.queueTimestamp) {
+                const date = new Date(result.queueTimestamp);
+                this.elements.lastUpdate.textContent = this.formatDate(date);
+            } else {
+                this.elements.lastUpdate.textContent = 'Never';
+            }
+        } catch (error) {
         }
     }
     
-    bindEvents() {
-        // Save button click
-        this.saveBtn.addEventListener('click', () => {
-            this.saveSettings();
-        });
+    formatDate(date) {
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
         
-        // Reset button click
-        this.resetBtn.addEventListener('click', () => {
-            this.resetSettings();
-        });
-        
-        // Auto-save on change
-        this.embedModeCheckbox.addEventListener('change', () => {
-            this.saveSettings();
-        });
-        
-        this.closeTabsCheckbox.addEventListener('change', () => {
-            this.saveSettings();
-        });
-        
-        this.sortOrderSelect.addEventListener('change', () => {
-            this.saveSettings();
-        });
-    }
-    
-    updateVersionInfo() {
-        // Get manifest info
-        const manifest = browserAPI.runtime.getManifest();
-        const versionElement = document.getElementById('version');
-        const nameElement = document.getElementById('extensionName');
-        
-        if (versionElement) {
-            versionElement.textContent = manifest.version;
-        }
-        
-        if (nameElement) {
-            nameElement.textContent = manifest.name;
+        if (diffMins < 1) {
+            return 'Just now';
+        } else if (diffMins < 60) {
+            return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+        } else if (diffHours < 24) {
+            return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+        } else if (diffDays < 7) {
+            return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+        } else {
+            return date.toLocaleDateString();
         }
     }
     
+    async resetAllSettings() {
+        if (!confirm('Are you sure you want to reset all settings and clear queue data? This cannot be undone.')) {
+            return;
+        }
+        
+        try {
+            await browserAPI.storage.local.clear();
+
+            // Reset form elements
+            this.elements.defaultEmbedMode.checked = false;
+            this.elements.defaultCloseTabs.checked = false;
+            this.elements.defaultSortOrder.value = 'newest';
+            this.updateModeText();
+
+            // Reload extension info
+            this.loadExtensionInfo();
+
+            this.showMessage('All settings have been reset to default values', 'success');
+        } catch (error) {
+            this.showMessage('Failed to reset settings', 'error');
+        }
+    }
+    
+    openLink(url) {
+        browserAPI.tabs.create({ url });
+    }
+
     showMessage(text, type = 'info') {
-        this.messageDiv.textContent = text;
-        this.messageDiv.className = `message ${type}`;
-        this.messageDiv.style.display = 'block';
+        this.elements.messageDiv.textContent = text;
+        this.elements.messageDiv.className = `message ${type}`;
+        this.elements.messageDiv.style.display = 'block';
         
-        // Auto-hide messages after 3 seconds
+        // Auto-hide message after 3 seconds
         setTimeout(() => {
-            this.hideMessage();
+            this.elements.messageDiv.style.display = 'none';
         }, 3000);
-    }
-    
-    hideMessage() {
-        this.messageDiv.style.display = 'none';
     }
 }
 
-// Initialize options when DOM is loaded
+// Initialize options page when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     new GatherTubeOptions();
 });

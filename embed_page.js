@@ -121,6 +121,10 @@ class GatherTubePlayer {
     }
 
     async saveQueue() {
+        // Keep the page URL in step with the queue, so reloading the page or restoring
+        // the browser session brings back the edited queue instead of the original one
+        history.replaceState(null, '', `?ids=${encodeURIComponent(this.videoIds.join(','))}&windowId=${this.windowId}`);
+
         try {
             // Use window-specific storage key for per-window isolation
             const storageKey = this.windowId ? `currentQueue_${this.windowId}` : 'currentQueue';
@@ -161,7 +165,7 @@ class GatherTubePlayer {
             // t: start time parameter
             // modestbranding=1: remove YouTube logo
             // fs=0: disable fullscreen to prevent endscreen
-            const iframeSrc = `https://www.youtube-nocookie.com/embed/${this.videoIds[0]}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&fs=0&disablekb=1&origin=${window.location.origin}`;
+            const iframeSrc = `https://www.youtube-nocookie.com/embed/${this.videoIds[this.currentVideoIndex]}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&fs=0&disablekb=1&origin=${window.location.origin}`;
 
             // Create and configure iframe
             const iframe = document.createElement('iframe');
@@ -571,8 +575,9 @@ class GatherTubePlayer {
         // Remove from old position
         this.videoIds.splice(dragIndex, 1);
 
-        // Adjust drop index if necessary
-        const newDropIndex = dragIndex < dropIndex ? dropIndex - 1 : dropIndex;
+        // Take the target's place, so dragging down puts the item below the target
+        // and dragging onto the last item moves it to the end
+        const newDropIndex = dropIndex;
 
         // Insert at new position
         this.videoIds.splice(newDropIndex, 0, videoId);
@@ -778,11 +783,12 @@ class GatherTubePlayer {
     }
 
     retry() {
+        this.cleanup();
         this.hideError();
         this.parseVideoIds();
         if (this.videoIds.length > 0) {
             this.showLoading();
-            this.initPlayer();
+            this.initIframePlayer();
         }
     }
 }
