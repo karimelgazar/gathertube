@@ -27,7 +27,7 @@ The extension uses only local browser storage (`chrome.storage.local` or `browse
 
 GatherTube does not:
 
-- Send data to external servers or cloud services
+- Send data to servers or cloud services other than YouTube's
 - Use analytics, tracking, or telemetry services
 - Share information with third parties
 - Connect to remote databases or APIs (except YouTube's public content)
@@ -39,7 +39,7 @@ GatherTube does not:
 The extension accesses YouTube pages only to:
 
 - **Read public video information**: Titles, thumbnails, durations, and channel names from YouTube pages you have open
-- **Display YouTube content**: Show video thumbnails and allow embedded playback through YouTube's standard embed functionality  
+- **Display YouTube content**: Show video thumbnails and allow embedded playback through YouTube's standard embed functionality. The embedded player loads videos from youtube.com, not from the privacy-enhanced youtube-nocookie.com. Like other standard YouTube embeds, it may use your YouTube cookies and signed-in account, subject to your browser's cookie settings, and it doesn't have privacy-enhanced mode's protection that keeps views of embedded videos from influencing your browsing experience on YouTube
 - **Manage browser tabs**: Open, close, and navigate between YouTube video tabs at your request
 - **Parse YouTube URLs**: Extract video IDs to organize and display your queue
 
@@ -51,6 +51,7 @@ The extension accesses YouTube pages only to:
 
 - **`tabs`**: Allows the extension to identify YouTube tabs, extract video URLs, and navigate between videos
 - **`storage`**: Enables saving your preferences and settings locally in your browser
+- **`declarativeNetRequestWithHostAccess`**: Lets the embedded player add the HTTP Referer header YouTube requires (`https://gathertube.<extension id>`) to its own requests (YouTube embed URLs carrying GatherTube's origin). It adds no permission warning
 - **`https://www.youtube.com/*`** and **`https://youtu.be/*`**: Required to read video information from YouTube pages and enable embedded playback
 
 ### What We DON'T Access:
@@ -107,4 +108,4 @@ This privacy policy complies with:
 
 ---
 
-**Summary**: GatherTube is designed with privacy-first principles. We collect no personal data, use no external services, and keep everything local to your browser. Your YouTube tab organization stays between you and your browser.
+**Summary**: GatherTube is designed with privacy-first principles. We collect no personal data, use no external services other than YouTube, and keep everything local to your browser. Your YouTube tab organization stays between you and your browser.

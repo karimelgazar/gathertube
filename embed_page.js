@@ -25,9 +25,38 @@ class GatherTubePlayer {
     }
 
     loadYouTubeAPI() {
-        setTimeout(() => {
-            this.initIframePlayer();
-        }, 100);
+        this.setEmbedReferer().then(() => {
+            setTimeout(() => {
+                this.initIframePlayer();
+            }, 100);
+        });
+    }
+
+    async setEmbedReferer() {
+        // YouTube's player now refuses to play without an HTTP Referer (error 153), and
+        // extension pages don't send one, so add it to this page's own player requests:
+        // embed URLs that carry origin=<this extension's origin>.
+        // The value follows YouTube's format for Chrome Web Store apps:
+        // https://developers.google.com/youtube/terms/required-minimum-functionality#embedded-player-api-client-identity
+        const origin = location.origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        try {
+            await chrome.declarativeNetRequest.updateSessionRules({
+                removeRuleIds: [1],
+                addRules: [{
+                    id: 1,
+                    priority: 1,
+                    action: {
+                        type: 'modifyHeaders',
+                        requestHeaders: [{ header: 'referer', operation: 'set', value: `https://gathertube.${chrome.runtime.id}` }]
+                    },
+                    condition: {
+                        regexFilter: `^https://www\\.youtube\\.com/embed/[^?]*\\?(.*&)?origin=${origin}(&|$)`
+                    }
+                }]
+            });
+        } catch (error) {
+            console.error('GatherTube: could not add the Referer rule the embedded player needs, so YouTube will refuse to play its videos (error 153):', error);
+        }
     }
 
     initElements() {
@@ -153,7 +182,8 @@ class GatherTubePlayer {
             }
 
             // Build single video URL for iframe with JS API enabled for event detection
-            // Use YouTube-nocookie domain and strong parameters to disable endscreen:
+            // Use the youtube.com domain (GatherTube's host permission covers it, which the
+            // Referer rule in setEmbedReferer needs) and strong parameters to disable endscreen:
             // rel=0: no related videos at end
             // showinfo=0: no video info overlay  
             // iv_load_policy=3: disable annotations/info cards
@@ -161,7 +191,7 @@ class GatherTubePlayer {
             // t: start time parameter
             // modestbranding=1: remove YouTube logo
             // fs=0: disable fullscreen to prevent endscreen
-            const iframeSrc = `https://www.youtube-nocookie.com/embed/${this.videoIds[0]}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&fs=0&disablekb=1&origin=${window.location.origin}`;
+            const iframeSrc = `https://www.youtube.com/embed/${this.videoIds[0]}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&fs=0&disablekb=1&origin=${window.location.origin}`;
 
             // Create and configure iframe
             const iframe = document.createElement('iframe');
@@ -357,7 +387,7 @@ class GatherTubePlayer {
 
             if (iframe) {
                 // Switch to single video URL with JS API enabled and suggestions disabled
-                const newSrc = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&fs=0&disablekb=1&origin=${window.location.origin}`;
+                const newSrc = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&fs=0&disablekb=1&origin=${window.location.origin}`;
 
                 iframe.src = newSrc;
 
@@ -605,6 +635,13 @@ class GatherTubePlayer {
 
     openQueueInYouTube() {
         if (this.videoIds.length === 0) return;
+
+        // YouTube's own queue (watch_videos) keeps only the first 50 videos, so don't
+        // open a cut-down copy of a longer queue
+        if (this.videoIds.length > 50) {
+            alert(`YouTube's own queue holds only 50 videos, so it can't open this queue of ${this.videoIds.length}. Your queue stays here in the GatherTube player.`);
+            return;
+        }
 
         const videoIdsParam = this.videoIds.join(',');
         const watchVideosUrl = `https://www.youtube.com/watch_videos?video_ids=${encodeURIComponent(videoIdsParam)}`;

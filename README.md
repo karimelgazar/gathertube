@@ -149,7 +149,7 @@ All keyboard shortcuts show visual confirmation when activated, displaying the a
 
 ### Supported Browsers
 - ✅ **Google Chrome** (Manifest V3, Service Worker)
-- ✅ **Mozilla Firefox** (Manifest V2, Background Script)
+- ✅ **Mozilla Firefox** 128 or later (Manifest V2, Background Script)
 - ✅ **Microsoft Edge** (Chromium-based, same as Chrome)
 - ✅ **Brave Browser** (Chromium-based, same as Chrome)
 - ✅ **Opera** (Chromium-based, same as Chrome)
@@ -173,6 +173,9 @@ All keyboard shortcuts show visual confirmation when activated, displaying the a
 - `tabs` - Read tab URLs and manage tabs
 - `storage` - Save user preferences and queue data
 - `host_permissions` - Access YouTube domains for video detection
+- `declarativeNetRequestWithHostAccess` - Add the HTTP Referer header YouTube requires to the embedded player's own requests (no additional permission warning)
+
+The embedded player loads videos from youtube.com, not from the privacy-enhanced youtube-nocookie.com. Like other standard YouTube embeds, it may use your YouTube cookies and signed-in account, subject to your browser's cookie settings, and it doesn't have privacy-enhanced mode's protection that keeps views of embedded videos from influencing your browsing experience on YouTube. See the [Privacy Policy](PRIVACY-POLICY.md).
 
 ### File Structure
 ```

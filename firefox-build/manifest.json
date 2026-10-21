@@ -5,6 +5,7 @@
   "description": "Gather all open YouTube video tabs into a single queue for seamless watching",
   "browser_specific_settings": {
     "gecko": {
+      "strict_min_version": "128.0",
       "data_collection_permissions": {
         "required": [
           "none"
@@ -15,6 +16,7 @@
   "permissions": [
     "tabs",
     "storage",
+    "declarativeNetRequestWithHostAccess",
     "*://*.youtube.com/*",
     "*://*.youtu.be/*"
   ],

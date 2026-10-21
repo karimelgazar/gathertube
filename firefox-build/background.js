@@ -7,6 +7,7 @@ const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 class GatherTubeBackground {
     constructor() {
         this.MAX_URL_LENGTH = 8000; // Safe limit for watch_videos URL
+        this.MAX_WATCH_VIDEOS = 50; // watch_videos keeps only the first 50 videos
         this.initializeListeners();
     }
     
@@ -331,9 +332,9 @@ class GatherTubeBackground {
             console.log(`Creating YouTube Native queue with ${videoIds.length} videos`);
             console.log(`URL: ${queueUrl}`);
             
-            // Check URL length limit
-            if (queueUrl.length > this.MAX_URL_LENGTH) {
-                console.log(`URL too long (${queueUrl.length} chars), falling back to embedded mode`);
+            // Check URL length and video count limits
+            if (queueUrl.length > this.MAX_URL_LENGTH || videoIds.length > this.MAX_WATCH_VIDEOS) {
+                console.log(`Queue too long (${videoIds.length} videos, ${queueUrl.length} chars), falling back to embedded mode`);
                 return await this.createEmbeddedQueue(videoIds);
             }
             
