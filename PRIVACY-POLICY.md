@@ -42,6 +42,7 @@ The extension accesses YouTube pages only to:
 - **Display YouTube content**: Show video thumbnails and allow embedded playback through YouTube's standard embed functionality  
 - **Manage browser tabs**: Open, close, and navigate between YouTube video tabs at your request
 - **Parse YouTube URLs**: Extract video IDs to organize and display your queue
+- **Look up video titles**: Ask YouTube's public oEmbed endpoint (youtube.com/oembed) for video titles by video ID: for the queue list in the embedded player, and, when you choose the English or Non-English sort, for the original title of each gathered video before sorting
 
 **Important**: GatherTube only accesses YouTube content from tabs you already have open in your browser. It does not browse YouTube independently or access your YouTube account data, watch history, or personal information.
 
@@ -64,7 +65,7 @@ The extension accesses YouTube pages only to:
 ## Data Security
 
 - All extension data remains in your local browser storage
-- No data is transmitted over the internet (except standard YouTube embed functionality)
+- No data is transmitted over the internet (except standard YouTube embed functionality and the title lookups described above)
 - No servers, databases, or cloud storage systems are involved
 - Your data is protected by your browser's built-in security features
 

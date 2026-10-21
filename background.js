@@ -34,12 +34,19 @@ class GatherTubeBackground {
     
     async handleGatherRequest(request, sendResponse) {
         try {
-            const { embedMode, closeTabs, sortOrder } = request;
-            const currentWindowOnly = true; // Always use current window only
+            // windowId is the window the popup was opened in: use it for the whole gather,
+            // not whichever window is current by the time the queue opens
+            const { embedMode, closeTabs, sortOrder, windowId } = request;
             
             // Get all YouTube video tabs
-            const videoData = await this.getYouTubeVideoTabs(currentWindowOnly);
+            const videoData = await this.getYouTubeVideoTabs(windowId);
             
+            // YouTube now shows many titles auto-translated into the viewer's language,
+            // and tab titles follow, so the language sorts use each video's original title
+            if (sortOrder === 'english' || sortOrder === 'non-english') {
+                await this.loadOriginalTitles(videoData);
+            }
+
             // Sort video data according to the selected sort order
             const sortedVideoData = this.sortVideoData(videoData, sortOrder || 'newest');
             
@@ -59,9 +66,9 @@ class GatherTubeBackground {
             // Create queue based on mode
             let queueResult;
             if (embedMode) {
-                queueResult = await this.createEmbeddedQueue(videoIds);
+                queueResult = await this.createEmbeddedQueue(videoIds, windowId);
             } else {
-                queueResult = await this.createWatchVideosQueue(videoIds);
+                queueResult = await this.createWatchVideosQueue(videoIds, windowId);
             }
             
             if (!queueResult.success) {
@@ -90,8 +97,8 @@ class GatherTubeBackground {
         }
     }
     
-    async getYouTubeVideoTabs(currentWindowOnly = false) {
-        const queryOptions = currentWindowOnly ? { currentWindow: true } : {};
+    async getYouTubeVideoTabs(windowId) {
+        const queryOptions = { windowId: windowId };
         const tabs = await chrome.tabs.query(queryOptions);
         
         const youtubeTabs = tabs.filter(tab => {
@@ -105,6 +112,7 @@ class GatherTubeBackground {
                 urlToCheck.includes('/channel/') || 
                 urlToCheck.includes('/c/') || 
                 urlToCheck.includes('/user/') ||
+                urlToCheck.includes('/@') ||
                 urlToCheck.includes('youtube.com/feed') ||
                 urlToCheck.includes('youtube.com/results')) {
                 return false;
@@ -149,6 +157,40 @@ class GatherTubeBackground {
         return youtubeTabs;
     }
     
+    async loadOriginalTitles(videoData) {
+        // Ask YouTube's oEmbed endpoint for each video's original title, once per video
+        // and 4 requests at a time; keep the tab title when that fails
+        const videoIds = [...new Set(videoData.map(video => this.extractVideoId(video.url)).filter(id => id))];
+        const titles = {};
+
+        const lookUpTitles = async () => {
+            while (videoIds.length > 0) {
+                const videoId = videoIds.shift();
+                try {
+                    const response = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`, {
+                        signal: AbortSignal.timeout(3000)
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        titles[videoId] = data.title;
+                    }
+                } catch (error) {
+                    // YouTube is unreachable or too slow, so keep the tab titles and stop
+                    // looking up the rest rather than waiting 3 seconds for each of them
+                    videoIds.length = 0;
+                }
+            }
+        };
+        await Promise.all(Array.from({ length: 4 }, () => lookUpTitles()));
+
+        videoData.forEach(video => {
+            const title = titles[this.extractVideoId(video.url)];
+            if (title) {
+                video.title = title;
+            }
+        });
+    }
+
     extractUniqueVideoIds(videoData) {
         const videoIds = new Set();
         
@@ -318,7 +360,7 @@ class GatherTubeBackground {
         return englishWordCount >= 2 || latinRatio > 0.7;
     }
     
-    async createWatchVideosQueue(videoIds) {
+    async createWatchVideosQueue(videoIds, windowId) {
         try {
             // KISS - Keep It Simple, Stupid
             // Just create the watch_videos URL exactly as you said
@@ -331,12 +373,13 @@ class GatherTubeBackground {
             // Check URL length limit
             if (queueUrl.length > this.MAX_URL_LENGTH) {
                 console.log(`URL too long (${queueUrl.length} chars), falling back to embedded mode`);
-                return await this.createEmbeddedQueue(videoIds);
+                return await this.createEmbeddedQueue(videoIds, windowId);
             }
             
             const tab = await chrome.tabs.create({
                 url: queueUrl,
-                active: true
+                active: true,
+                windowId: windowId
             });
             
             return {
@@ -352,36 +395,33 @@ class GatherTubeBackground {
         }
     }
     
-    async createEmbeddedQueue(videoIds) {
+    async createEmbeddedQueue(videoIds, windowId) {
         try {
-            // Get current window to ensure proper context
-            const currentWindow = await chrome.windows.getCurrent();
-            const windowId = currentWindow.id;
-            
             // Create URL with video IDs and windowId as parameters
             const embedUrl = chrome.runtime.getURL('embed_page.html') + 
                 '?ids=' + encodeURIComponent(videoIds.join(',')) + 
                 '&windowId=' + windowId;
             
-            // Check if we already have an embed page open in the CURRENT WINDOW only
+            // Check if we already have an embed page open in THIS WINDOW only
             const existingTabs = await chrome.tabs.query({
                 url: chrome.runtime.getURL('embed_page.html') + '*',
-                currentWindow: true  // This ensures isolation between browser windows
+                windowId: windowId  // This ensures isolation between browser windows
             });
             
             let tab;
             if (existingTabs.length > 0) {
-                // Update existing embed page in current window
+                // Update existing embed page in this window
                 tab = existingTabs[0];
                 await chrome.tabs.update(tab.id, {
                     url: embedUrl,
                     active: true
                 });
             } else {
-                // Create new embed page in current window
+                // Create new embed page in this window
                 tab = await chrome.tabs.create({
                     url: embedUrl,
-                    active: true
+                    active: true,
+                    windowId: windowId
                 });
             }
             

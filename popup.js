@@ -87,8 +87,12 @@ class GatherTubePopup {
         this.hideMessage();
         
         try {
+            // Gather in the window this popup belongs to, even if the user switches
+            // to another window before the queue opens
+            const currentWindow = await chrome.windows.getCurrent();
             const response = await chrome.runtime.sendMessage({
                 action: 'gather',
+                windowId: currentWindow.id,
                 embedMode: this.embedModeCheckbox.checked,
                 closeTabs: this.closeTabsCheckbox.checked,
                 sortOrder: this.sortOrderSelect.value
